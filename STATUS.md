@@ -34,6 +34,16 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   patchwork and not authoritative; the J&K/Ladakh/Arunachal outline needs a compliance check vs
   Survey of India before launch. India-WRIS district names must be matched to these (state, name).
 
+- `pipeline/district_match.py` + `district_aliases.csv` + `tests/test_district_match.py`: crosswalk
+  from India-WRIS (state, district) names to geojson ids. Order: alias -> exact (punctuation/spacing
+  insensitive) -> fuzzy (same state, never flips East/West/Purba/Paschim etc.) -> none. State aliases
+  (Orissa, NCT of Delhi, `&`, Dadra/Daman merge) built in. All Delhi WRIS districts map to the single
+  `Delhi` polygon. Writes `pipeline/district_crosswalk.csv`. The ~100 aliases are from my knowledge of
+  renames, NOT yet checked against real WRIS names: after the first fetch run
+  `python pipeline/district_match.py` (reads `targets.csv`), review the `fuzzy` and `UNMATCHED` lines,
+  and add rows to the alias CSV. Note `aggregate.py` assigns by lat/lon, so names only matter for
+  building `targets.csv` and sanity checks.
+
 ## Blocked / not verified
 - **The Claude cloud sandbox could not reach `indiawris.gov.in`, `data.gov.in`, `cgwb.gov.in`.**
   First a 403 from the egress policy; after "full access" was enabled the proxy let the CONNECT
@@ -55,8 +65,8 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
    reset, run the fetch locally instead.
 2. If reachable: `--discover`, build `pipeline/targets.csv` (state,district,agency), run `fetch.py`
    (test one district first), confirm what `dataValue` means, check 0.0 handling.
-3. (Boundaries done, see above.) Still: sensitive-border compliance check, and a district-name
-   crosswalk between India-WRIS and `districts.geojson`.
+3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check, and tuning
+   the alias table against real WRIS names.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,
    remove the placeholder banner logic dependence.
 5. Polish: station layer, district search, latest-vs-previous trend, mobile/accessibility checks,
