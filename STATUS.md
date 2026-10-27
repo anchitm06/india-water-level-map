@@ -59,6 +59,13 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
 - India-WRIS / data.gov.in still unreachable from the sandbox on 2026-10-27 (connection reset);
   `fetch.py` remains untested against the live API. Run it locally.
 
+- Tried a GitHub Actions runner (Azure US IP) on 2026-10-27: `indiawris.gov.in` and `data.gov.in` both
+  timed out / refused to connect, so hosted runners are blocked too (probably geo/IP filtering of
+  non-Indian ranges). The probe workflow was removed; see git history (commit "Add workflow to probe
+  India-WRIS...") if you want to re-run it. Remaining options: run `fetch.py` from an Indian-IP machine
+  (local, or a self-hosted runner there), or request the data officially from CGWB/India-WRIS.
+- The Pages deploy run on `main` failed on 2026-10-27 (run 40573852076); not yet investigated.
+
 ## Next steps
 1. In a new session, first test reachability: `curl -sS -m 20 -o /dev/null -w "%{http_code}\n" https://indiawris.gov.in/`
    and `curl -sS "$HTTPS_PROXY/__agentproxy/status"` (check `recentRelayFailures`). If still
