@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>India Groundwater Levels</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="map" role="application" aria-label="Map of India groundwater levels"></div>
+  <aside id="panel">
+    <h1>India groundwater levels</h1>
+    <div id="banner" hidden>Placeholder data: synthetic grid, not real districts or readings.</div>
+    <div class="row">
+      <label>Season
+        <select id="season"><option value="pre">Pre-monsoon</option><option value="post">Post-monsoon</option></select>
+      </label>
+      <label>Year <output id="year-out"></output>
+        <input id="year" type="range" step="1" />
+      </label>
+      <button id="play" type="button">Play</button>
+    </div>
+    <div id="legend"></div>
+    <section id="detail" hidden>
+      <h2 id="d-name"></h2>
+      <p id="d-sub"></p>
+      <canvas id="chart" height="160"></canvas>
+      <button id="csv" type="button">Download CSV</button>
+    </section>
+    <p class="hint" id="hint">Click a district to see its history.</p>
+    <p class="note">Depth in metres below ground level: higher means a deeper (worse) water table.</p>
+  </aside>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
