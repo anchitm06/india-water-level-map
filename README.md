@@ -11,7 +11,7 @@ pre/post-monsoon year slider and per-district history charts. Static site for Gi
   sample (`pipeline/tests/`). It has never reached the live API: the cloud sandbox cannot connect to
   `indiawris.gov.in`, so run it locally. It needs `pipeline/targets.csv` (state,district,agency).
   `pipeline/aggregate.py` is untested against real readings.
-- Still needed: real district boundaries (`public/data/districts.geojson`, properties `id`, `name`, `state`).
+- District boundaries are real (`pipeline/build_districts.py`); only the levels are synthetic.
 
 ## Develop
     npm install

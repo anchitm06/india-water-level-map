@@ -1,6 +1,6 @@
 # Project status and plan (handoff notes)
 
-Last updated: 2026-10-27. Branch: `claude/india-groundwater-map-znsfiw`.
+Last updated: 2026-10-27 (second session). Branch: `claude/india-groundwater-map-znsfiw`.
 
 ## Goal
 Static GitHub Pages site: interactive India map, **district level**, groundwater depth (m below
@@ -26,6 +26,14 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
 - `pipeline/aggregate.py`: station readings -> district x year x season medians via point-in-polygon
   (shapely). Written, **untested on real data**.
 
+- `pipeline/build_districts.py`: real district boundaries (724 features, ids `stcode-dtcode`, ~340 KB)
+  from udit-001/india-maps-data on GitHub (Census 2011 + later splits, newest-first so e.g.
+  Telangana's 31 districts replace parents). `public/data/districts.geojson` is now REAL;
+  `generate_placeholder.py --keep-districts` writes random `levels.json` keyed to them (banner
+  still shown). Verified rendering in headless Chromium. Caveat: boundaries are a mixed-vintage
+  patchwork and not authoritative; the J&K/Ladakh/Arunachal outline needs a compliance check vs
+  Survey of India before launch. India-WRIS district names must be matched to these (state, name).
+
 ## Blocked / not verified
 - **The Claude cloud sandbox could not reach `indiawris.gov.in`, `data.gov.in`, `cgwb.gov.in`.**
   First a 403 from the egress policy; after "full access" was enabled the proxy let the CONNECT
@@ -38,7 +46,8 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   the browser network tab.
 - Assumption to verify: `dataValue` (unit "m", datatypeCode GGZ) = depth below ground level.
   Sample range 0.0-4.86 m; exact 0.0 values may be sensor artefacts (not filtered yet).
-- Real district boundary GeoJSON (properties `id`, `name`, `state`) not yet obtained.
+- India-WRIS / data.gov.in still unreachable from the sandbox on 2026-10-27 (connection reset);
+  `fetch.py` remains untested against the live API. Run it locally.
 
 ## Next steps
 1. In a new session, first test reachability: `curl -sS -m 20 -o /dev/null -w "%{http_code}\n" https://indiawris.gov.in/`
@@ -46,8 +55,8 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
    reset, run the fetch locally instead.
 2. If reachable: `--discover`, build `pipeline/targets.csv` (state,district,agency), run `fetch.py`
    (test one district first), confirm what `dataValue` means, check 0.0 handling.
-3. Get real district boundaries (an open GeoJSON on a reachable host, or user-supplied); keep one
-   fixed boundary set and document it. Mind sensitive-border compliance.
+3. (Boundaries done, see above.) Still: sensitive-border compliance check, and a district-name
+   crosswalk between India-WRIS and `districts.geojson`.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,
    remove the placeholder banner logic dependence.
 5. Polish: station layer, district search, latest-vs-previous trend, mobile/accessibility checks,
