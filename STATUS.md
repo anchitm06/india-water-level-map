@@ -106,9 +106,23 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   AP/Khammam, Gujarat/Daman, Diu) and need cross-state aliases or can be dropped. Re-run with
   `python pipeline/fetch.py --discover > wris.csv; python pipeline/district_match.py wris.csv`.
 
+- Fetch made efficient and gentle (2026-10-28): one Mar-Dec request per year before 2022 (manual
+  data), per-season requests from 2022 (telemetric); one shared throttle (max 2 req/s) across
+  `--workers` (default 2, max 3); failed windows are skipped and retried next run, 5 failures in a
+  row stop the run; `--state` filter; live ETA. WRIS lists 136 districts twice in different case
+  and its API ignores case, so targets are de-duplicated (1,331 -> 1,195). Data before ~1985 is a
+  handful of wells per district (Pune/Ludhiana/Coimbatore probes), so default `--from-year 1985`.
+- **Delhi trial run done** (`--state Delhi`, 15 targets, 1985-2026): 1,260 season windows in 26 min,
+  no failures, 37k daily readings in `pipeline/raw/` (gitignored, kept, so the full run skips
+  Delhi). Sanity: median depth 4 m (1985) -> 10 m (2015), deepest wells 60-67 m, only 3 readings
+  in pre-monsoon 2020 (lockdown). Telemetric years add thousands of readings and a few outliers
+  (174 m, 110 m) for the aggregate.py outlier check. Delhi SW GW telemetric data is all 0.0 until
+  2024 and gets dropped. Scaling Delhi's rate gives roughly 30-35 h for all 1,195 targets with 2
+  workers; the run prints its own ETA.
+
 ## Next steps
-1. Run `fetch.py` over `pipeline/targets.csv` (one district first), then check the cleaned
-   values against published CGWB figures.
+1. Full fetch on the local machine: `python pipeline/fetch.py --workers 3` (resumable; stop with
+   Ctrl+C and re-run any time). Then check the cleaned values against published CGWB figures.
 2. Add the unmatched aliases above to `district_aliases.csv`.
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check, and tuning
    the alias table against real WRIS names.
