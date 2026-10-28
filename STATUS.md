@@ -64,7 +64,11 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   non-Indian ranges). The probe workflow was removed; see git history (commit "Add workflow to probe
   India-WRIS...") if you want to re-run it. Remaining options: run `fetch.py` from an Indian-IP machine
   (local, or a self-hosted runner there), or request the data officially from CGWB/India-WRIS.
-- The Pages deploy run on `main` failed on 2026-10-27 (run 40573852076); not yet investigated.
+- The Pages deploy run on `main` failed on 2026-10-27 (run 40573852076). Investigated 2026-10-28:
+  build job and artifact upload succeeded; `actions/deploy-pages@v4` got a 404 creating the
+  deployment because **GitHub Pages is not enabled** on the repo (`has_pages: false`). Fix: repo
+  Settings -> Pages -> Source: "GitHub Actions", then re-run the workflow. The workflow file itself
+  is fine. Only a Node 20 deprecation warning for deploy-pages@v4 (forced to Node 24, still runs).
 
 ## Local machine run (2026-10-28, user's Windows PC in India)
 - **India-WRIS is reachable from the local machine.** Live
