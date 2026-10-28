@@ -2,7 +2,7 @@
 
 India-WRIS uses older / alternative spellings (Gurgaon, Orissa, EAST for a Delhi district), so
 names are resolved in this order and the method is recorded:
-  alias   pipeline/district_aliases.csv  (state,wris_name,geojson_name)  - reviewed by hand
+  alias   pipeline/district_aliases.csv  (state,wris_name,geojson_name[,geojson_state])  - reviewed by hand
   exact   same normalized name within the state
   fuzzy   difflib ratio >= FUZZY_CUTOFF within the state - REVIEW these before trusting them
   none    no match; add a row to district_aliases.csv
@@ -62,11 +62,13 @@ class Matcher:
             p = f["properties"]
             self.states[norm(p["state"])] = p["state"]
             self.by_state.setdefault(p["state"], {})[key(p["name"])] = p
-        self.aliases: dict[tuple[str, str], str] = {}
+        # (state, wris_name) -> (geojson state, geojson name). geojson_state is optional: blank means
+        # the same state; set it where WRIS files a district under the wrong state (MP / Rajnandgaon).
+        self.aliases: dict[tuple[str, str], tuple[str, str]] = {}
         if ALIASES.exists():
-            with open(ALIASES, newline="") as fh:
+            with open(ALIASES, newline="", encoding="utf-8") as fh:
                 for r in csv.DictReader(fh):
-                    self.aliases[(norm(r["state"]), key(r["wris_name"]))] = r["geojson_name"]
+                    self.aliases[(norm(r["state"]), key(r["wris_name"]))] = (r.get("geojson_state") or r["state"], r["geojson_name"])
 
     def state(self, name: str) -> str | None:
         n = norm(name)
@@ -79,9 +81,10 @@ class Matcher:
         if st is None:
             return None, "none:state"
         pool = self.by_state[st]
-        target = self.aliases.get((norm(st), key(district)))
-        if target is not None:
-            p = pool.get(key(target))
+        alias = self.aliases.get((norm(st), key(district)))
+        if alias is not None:
+            alias_state = self.state(alias[0])
+            p = self.by_state[alias_state].get(key(alias[1])) if alias_state else None
             return (p, "alias") if p else (None, "none:bad-alias")
         if key(district) in pool:
             return pool[key(district)], "exact"

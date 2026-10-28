@@ -1,4 +1,4 @@
-state,wris_name,geojson_name
+state,wris_name,geojson_name,geojson_state
 Andhra Pradesh,Nellore,S.P.S. Nellore
 Andhra Pradesh,Sri Potti Sriramulu Nellore,S.P.S. Nellore
 Andhra Pradesh,Cuddapah,Y.S.R. Kadapa
@@ -101,3 +101,33 @@ Delhi,South West,Delhi
 Delhi,South East,Delhi
 Delhi,New Delhi,Delhi
 Delhi,Shahdara,Delhi
+Madhya Pradesh,East Nimar,Khandwa,
+Madhya Pradesh,West Nimar,Khargone,
+Madhya Pradesh,Rajnandgaon,Rajnandgaon,Chhattisgarh
+Uttar Pradesh,G.B. Nagar,Gautam Buddha Nagar,
+Uttar Pradesh,Jyotiba Phule Nagar,Amroha,
+Uttar Pradesh,Sant Ravidas Nagar,Bhadohi,
+Punjab,Mukatsar,Sri Muktsar Sahib,
+Punjab,Shri Muktsar Sahib,Sri Muktsar Sahib,
+Karnataka,Coorg,Kodagu,
+Karnataka,Dakshin Kannada,Dakshina Kannada,
+Karnataka,Vijayanagara,Ballari,
+Maharashtra,Mumbai City,Mumbai,
+Maharashtra,Mumbai Suburban,Mumbai,
+Kerala,Trichur,Thrissur,
+Jharkhand,Paschim Singbhum,West Singhbhum,
+Odisha,Baleshwar,Balasore,
+Odisha,Sonapur,Subarnapur,
+Andhra Pradesh,Khammam,Khammam,Telangana
+Telangana,Bhupalpally,Jayashankar Bhupalapally,
+Telangana,Jogulamba(Gadwal),Jogulamba Gadwal,
+Telangana,Medchal,Medchal Malkajgiri,
+Telangana,Sircilla,Rajanna Sircilla,
+Gujarat,Daman,Daman,Dadra and Nagar Haveli and Daman and Diu
+Gujarat,Diu,Diu,Dadra and Nagar Haveli and Daman and Diu
+Gujarat,Dohad,Dahod,
+Chhattisgarh,Dantewada,Dakshin Bastar Dantewada,
+Chhattisgarh,Kanker,Uttar Bastar Kanker,
+Chhattisgarh,Gaurella Pendra Marwahi,Bilaspur,
+West Bengal,East Medinipur,Purba Medinipur,
+West Bengal,West Medinipur,Paschim Medinipur,

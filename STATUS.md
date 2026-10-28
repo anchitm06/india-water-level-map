@@ -97,14 +97,15 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   2022. Telemetric windows are large (Ludhiana Punjab GW post-2023: 23k raw rows, 60 s), so a full
   run over 1,331 targets x 25 years x 2 seasons will take many hours; it is resumable.
 - `pipeline/tests/test_fetch.py` had no `__main__` runner, so `python` on it ran nothing; fixed.
-- Matcher on the 752 unique real WRIS names: exact 626, alias 54, fuzzy 40, none 32. The fuzzy
-  matches all look right (spelling variants such as Hazaribag/Hazaribagh). Unmatched ones need
-  alias rows, e.g. EAST/WEST NIMAR (Khandwa/Khargone), G.B. Nagar, Jyotiba Phule Nagar (Amroha),
-  Sant Ravidas Nagar (Bhadohi), Mukatsar, Coorg, Dakshin Kannada, Trichur, Paschim Singbhum,
-  Baleshwar, Sonapur, Mumbai City/Suburban, Dohad, Dantewada, Kanker, Barddhaman, Medinipur
-  variants, Telangana new districts. Some WRIS rows are in the wrong state (MP/Rajnandgaon,
-  AP/Khammam, Gujarat/Daman, Diu) and need cross-state aliases or can be dropped. Re-run with
-  `python pipeline/fetch.py --discover > wris.csv; python pipeline/district_match.py wris.csv`.
+- Matcher on the 740 unique real WRIS names in `targets.csv` (after 30 new aliases, 2026-10-28):
+  exact 617, alias 83, fuzzy 38, none 2. The fuzzy matches all look right (spelling variants such
+  as Hazaribag/Hazaribagh). `district_aliases.csv` has an optional `geojson_state` column for rows
+  WRIS files under the wrong state (MP/Rajnandgaon -> Chhattisgarh, AP/Khammam -> Telangana,
+  Gujarat/Daman and Diu -> Dadra and Nagar Haveli and Daman and Diu). Districts newer than the
+  boundary set map to their parent: Vijayanagara -> Ballari (2021), Gaurella Pendra Marwahi ->
+  Bilaspur (2020). Left unmatched on purpose: West Bengal BARDDHAMAN (split into Purba/Paschim
+  Bardhaman, 2017) and undivided Mednipur (split 2002); no single polygon fits, and aggregate.py
+  places their stations by lat/lon anyway. Re-run with `python pipeline/district_match.py`.
 
 - Fetch made efficient and gentle (2026-10-28): one Mar-Dec request per year before 2022 (manual
   data), per-season requests from 2022 (telemetric); one shared throttle (max 2 req/s) across
@@ -147,9 +148,8 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
 1. Full fetch running on the local machine since 2026-10-28: `python pipeline/fetch.py --workers 3`
    (resumable; stop with Ctrl+C and re-run any time). Then `python pipeline/aggregate.py` and
    check the values against published CGWB figures.
-2. Add the unmatched aliases above to `district_aliases.csv`.
-3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check, and tuning
-   the alias table against real WRIS names.
+2. (Aliases done, see above.)
+3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,
    remove the placeholder banner logic dependence.
 5. Polish: station layer, district search, latest-vs-previous trend, mobile/accessibility checks,
