@@ -136,8 +136,12 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   shapely is installed in the user site-packages, which `python -I` hides: run `aggregate.py`
   without `-I`. Running it while the fetch is going is safe (it only reads readings.csv), but
   restore the placeholder `public/data/levels.json` (`git checkout`) until the fetch is complete.
-- Open question: a district-season backed by very few stations (Delhi pre-2020: 3) is shown like
-  any other. Consider a minimum station count or showing the count in the UI.
+- Station counts: `levels.json` now has `data[id].stations = {pre: [...], post: [...]}` (stations
+  behind each median, 0 when none). The district panel shows them ("2020 Pre-monsoon: 3.9 m bgl
+  (3 stations)"), as do the chart tooltips and two extra CSV columns. Optional in the frontend, so
+  the placeholder data (no counts) still works. Checked in headless Edge on real Delhi data
+  (2015: 104 stations, 2020: 3), no page errors; the chart tooltip text was not checked visually.
+  `npm ci` was needed locally before `npm run build`.
 
 ## Next steps
 1. Full fetch running on the local machine since 2026-10-28: `python pipeline/fetch.py --workers 3`

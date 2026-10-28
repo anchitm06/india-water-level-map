@@ -6,8 +6,11 @@ type Season = "pre" | "post";
 interface Levels {
   meta: { placeholder: boolean; source: string; unit: string };
   years: number[];
-  data: Record<string, Record<Season, (number | null)[]>>;
+  // stations: how many stations each median is based on (absent in placeholder data)
+  data: Record<string, Record<Season, (number | null)[]> & { stations?: Record<Season, number[]> }>;
 }
+
+const stationsText = (n: number | undefined) => n == null ? "" : ` (${n} station${n === 1 ? "" : "s"})`;
 
 // Depth to water (m bgl) classes, sequential light -> dark; deeper is worse.
 const CLASSES: [number, string][] = [
@@ -66,7 +69,8 @@ async function main() {
     $("detail").hidden = true; $("hint").hidden = true; $("detail").hidden = false;
     $("d-name").textContent = f.properties.name;
     const v = valueAt(id);
-    $("d-sub").textContent = `${f.properties.state} · ${levels.years[Number(yearEl.value)]} ${seasonEl.selectedOptions[0].text}: ${v == null ? "no data" : v.toFixed(1) + " m bgl"}`;
+    const n = series.stations?.[seasonEl.value as Season]?.[Number(yearEl.value)];
+    $("d-sub").textContent = `${f.properties.state} · ${levels.years[Number(yearEl.value)]} ${seasonEl.selectedOptions[0].text}: ${v == null ? "no data" : v.toFixed(1) + " m bgl" + stationsText(n)}`;
     chart?.destroy();
     chart = new Chart($<HTMLCanvasElement>("chart"), {
       type: "line",
@@ -77,7 +81,13 @@ async function main() {
           borderColor: s === "pre" ? "#d2793a" : "#1f5fa8", tension: 0.2,
         })),
       },
-      options: { scales: { y: { reverse: true, title: { display: true, text: "m below ground" } } }, plugins: { legend: { position: "bottom" } } },
+      options: {
+        scales: { y: { reverse: true, title: { display: true, text: "m below ground" } } },
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: { callbacks: { afterLabel: (c) => stationsText(series.stations?.[(["pre", "post"] as Season[])[c.datasetIndex]]?.[c.dataIndex]).trim() } },
+        },
+      },
     });
   }
 
@@ -115,7 +125,8 @@ async function main() {
   $("csv").addEventListener("click", () => {
     if (!selected) return;
     const s = levels.data[selected];
-    const rows = ["year,pre_monsoon_m_bgl,post_monsoon_m_bgl", ...levels.years.map((y, i) => `${y},${s.pre[i] ?? ""},${s.post[i] ?? ""}`)];
+    const rows = ["year,pre_monsoon_m_bgl,post_monsoon_m_bgl,pre_monsoon_stations,post_monsoon_stations",
+      ...levels.years.map((y, i) => `${y},${s.pre[i] ?? ""},${s.post[i] ?? ""},${s.stations?.pre[i] ?? ""},${s.stations?.post[i] ?? ""}`)];
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([rows.join("\n")], { type: "text/csv" }));
     a.download = `${selected}.csv`;

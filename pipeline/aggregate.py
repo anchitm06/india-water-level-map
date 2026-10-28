@@ -4,7 +4,8 @@ Inputs:
   pipeline/raw/readings.csv   station_id,lat,lon,date,level_m_bgl  (date is YYYY-MM-DD)
   public/data/districts.geojson  features with properties id, name, state
 Output:
-  public/data/levels.json  (same schema generate_placeholder.py writes)
+  public/data/levels.json  (same schema generate_placeholder.py writes, plus per district
+  "stations": {pre: [...], post: [...]}, the number of stations behind each median)
 
 Seasons follow CGWB practice: pre-monsoon = Mar-May, post-monsoon = Oct-Dec.
 Districts with no readings for a year/season get null, never an interpolated value.
@@ -108,6 +109,7 @@ def main() -> None:
     for did in ids:
         data[did] = {s: [round(statistics.median(v), 2) if (v := buckets.get((did, y, s))) else None for y in years]
                      for s in ("pre", "post")}
+        data[did]["stations"] = {s: [len(buckets.get((did, y, s), ())) for y in years] for s in ("pre", "post")}
     (ROOT / "public/data/levels.json").write_text(json.dumps({
         "meta": {"placeholder": False, "source": "India-WRIS / CGWB", "unit": "m below ground level"},
         "years": years, "data": data}, separators=(",", ":")), encoding="utf-8")
