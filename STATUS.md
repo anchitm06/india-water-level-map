@@ -120,9 +120,29 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   2024 and gets dropped. Scaling Delhi's rate gives roughly 30-35 h for all 1,195 targets with 2
   workers; the run prints its own ETA.
 
+- `aggregate.py` reworked (2026-10-28), tests in `pipeline/tests/test_aggregate.py`:
+  - each station is reduced to one median per (year, season) before the district median, so a
+    telemetric station (90 daily readings) no longer outweighs 90 manual wells;
+  - outlier check per station, robust (median/MAD with a metre floor): daily spikes vs the
+    station's season median (k=5, floor 2 m), and season jumps vs the same station's seasons
+    within +-5 years (k=5, floor 15 m, needs 3 neighbours). The local window keeps long declines,
+    recoveries and isolated seasons before data gaps;
+  - repeated (station, date) rows count once (an interrupted fetch can append a window twice).
+  On the Delhi trial data: 310 daily spikes and 13 station-seasons dropped. 11 are clearly bad
+  (a batch of unrelated wells all ~44 m in pre-monsoon 2017, 99 m / 73 m spikes, a 10 m value
+  among 41-60 m). Two are ambiguous: AAXI014 (15 m in 2023, then 41-44 m in a 45 m well, which looks
+  dry/sensor-at-bottom, so the wrong side may be dropped) and DLIF19 (25 m then 6-8 m).
+  Delhi `07-000` pre-monsoon: 4.3 (1985), 6.0 (1995), 8.3 (2005), 10.0 (2015) m.
+  shapely is installed in the user site-packages, which `python -I` hides: run `aggregate.py`
+  without `-I`. Running it while the fetch is going is safe (it only reads readings.csv), but
+  restore the placeholder `public/data/levels.json` (`git checkout`) until the fetch is complete.
+- Open question: a district-season backed by very few stations (Delhi pre-2020: 3) is shown like
+  any other. Consider a minimum station count or showing the count in the UI.
+
 ## Next steps
-1. Full fetch on the local machine: `python pipeline/fetch.py --workers 3` (resumable; stop with
-   Ctrl+C and re-run any time). Then check the cleaned values against published CGWB figures.
+1. Full fetch running on the local machine since 2026-10-28: `python pipeline/fetch.py --workers 3`
+   (resumable; stop with Ctrl+C and re-run any time). Then `python pipeline/aggregate.py` and
+   check the values against published CGWB figures.
 2. Add the unmatched aliases above to `district_aliases.csv`.
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check, and tuning
    the alias table against real WRIS names.
