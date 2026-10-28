@@ -77,13 +77,26 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
 - Master endpoints (not in the swagger) that work, found by trial:
   `POST /masterState/StateList` body `{"datasetcode":"GWATERLVL"}` (32 states, with `statecode`);
   `POST /masterDistrict/getDistrictbyState` body `{"datasetcode":"GWATERLVL","statecode":"45"}`
-  (gives `districtname`, uppercase). `--discover` now uses these and prints `state,district,agency`
-  CSV (778 rows) with **agency left blank**.
-- **Agency is still the blocker.** `agencyName` is required (missing = 400, blank = 0 rows),
-  `CGWB` / `Central Ground Water Board` return 0 rows for Delhi East, and
-  `/masterAgency/districAgencyList` (plus a few guessed variants) is a 404. Open the Ground Water
-  Level page on indiawris.gov.in, pick a state/district, and copy the agency request (URL + body)
-  and the exact CGWB agency spelling from the browser network tab.
+  (gives `districtname`, uppercase, and `district_id`);
+  `POST /masterAgency/AgencyListInAnyCase` body `{"datasetcode":"GWATERLVL","district_id":107102}`
+  (taken from the site's own request; tahsil/block fields are optional). `--discover` chains all
+  three and prints the full `state,district,agency` CSV for `targets.csv`.
+- `agencyName` is required (missing = 400, blank = 0 rows). CGWB is spelled `CGWB`. An earlier
+  10-day March window simply had no CGWB readings; full seasons do.
+- **dataValue sign is inconsistent.** CGWB Delhi East, post-monsoon 2023, 7 telemetric stations:
+  most report depth as negative (-3 to -27 m), two as positive (25.85, 14.9 m). `-1000` is a no-data
+  sentinel (CGWBDL46). AAXI014 jumps to ~44 m in a 45 m well (dry or sensor at the bottom).
+  CGWBDL46 is a faulty sensor drifting across hundreds of metres (down to -1124 m) in Mar-May 2023.
+  `fetch.clean_level` now takes abs, drops 0.0, >= 200 m, and >= wellDepth. Still to do: a
+  per-station outlier check in `aggregate.py` (a drifting sensor under 200 m would get through)
+  and validation against published CGWB district figures. Delhi SW GW returned nothing for
+  Oct-Dec 2023.
+- `targets.csv` built (1,331 rows, 752 districts, 32 states; CGWB in almost every district plus
+  state agencies). Test fetch over 2015/2022/2023 for Delhi East and Ludhiana: CGWB has Manual
+  readings (one per station per season) back to at least 2015, with Telemetric readings from about
+  2022. Telemetric windows are large (Ludhiana Punjab GW post-2023: 23k raw rows, 60 s), so a full
+  run over 1,331 targets x 25 years x 2 seasons will take many hours; it is resumable.
+- `pipeline/tests/test_fetch.py` had no `__main__` runner, so `python` on it ran nothing; fixed.
 - Matcher on the 752 unique real WRIS names: exact 626, alias 54, fuzzy 40, none 32. The fuzzy
   matches all look right (spelling variants such as Hazaribag/Hazaribagh). Unmatched ones need
   alias rows, e.g. EAST/WEST NIMAR (Khandwa/Khargone), G.B. Nagar, Jyotiba Phule Nagar (Amroha),
@@ -94,9 +107,8 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   `python pipeline/fetch.py --discover > wris.csv; python pipeline/district_match.py wris.csv`.
 
 ## Next steps
-1. Find the agency endpoint or names (see above), fill `pipeline/targets.csv`, run `fetch.py` for
-   one district first, confirm what `dataValue` means, check 0.0 handling (the first live Delhi East
-   telemetric reading, station PIZ10218, was again 0.0).
+1. Run `fetch.py` over `pipeline/targets.csv` (one district first), then check the cleaned
+   values against published CGWB figures.
 2. Add the unmatched aliases above to `district_aliases.csv`.
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check, and tuning
    the alias table against real WRIS names.
