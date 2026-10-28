@@ -53,7 +53,7 @@ def test_throttle_spaces_requests():
     start = time.monotonic()
     for _ in range(4):
         th.wait()
-    assert th.next >= start + 0.2  # four slots booked back to back
+    assert th.next >= start + 0.2 - 1e-6  # four slots booked back to back (float-rounding slack)
     assert time.monotonic() - start >= 0.1  # loose: Windows clocks tick every ~15 ms
 
 
