@@ -1,6 +1,6 @@
 # Project status and plan (handoff notes)
 
-Last updated: 2026-10-27 (second session). Branch: `claude/india-groundwater-map-znsfiw`.
+Last updated: 2026-10-28 (local machine run). Branch: `claude/india-groundwater-map-znsfiw`.
 
 ## Goal
 Static GitHub Pages site: interactive India map, **district level**, groundwater depth (m below
@@ -66,12 +66,38 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   (local, or a self-hosted runner there), or request the data officially from CGWB/India-WRIS.
 - The Pages deploy run on `main` failed on 2026-10-27 (run 40573852076); not yet investigated.
 
+## Local machine run (2026-10-28, user's Windows PC in India)
+- **India-WRIS is reachable from the local machine.** Live
+  `fetch_window("Delhi", "East", "Delhi SW GW", ...)` returned real readings in the same shape
+  as `sample_gwl.json`. Tests still pass.
+- TLS gotcha: Windows `curl` (schannel) refuses the site with `CRYPT_E_REVOKED`. The
+  `*.indiawris.gov.in` cert (eMudhra, valid Oct 6 to Dec 18 2026) is reported revoked. Python
+  (OpenSSL) validates the chain and hostname but does not check revocation, so `fetch.py` works.
+  Use Python rather than curl on Windows.
+- Master endpoints (not in the swagger) that work, found by trial:
+  `POST /masterState/StateList` body `{"datasetcode":"GWATERLVL"}` (32 states, with `statecode`);
+  `POST /masterDistrict/getDistrictbyState` body `{"datasetcode":"GWATERLVL","statecode":"45"}`
+  (gives `districtname`, uppercase). `--discover` now uses these and prints `state,district,agency`
+  CSV (778 rows) with **agency left blank**.
+- **Agency is still the blocker.** `agencyName` is required (missing = 400, blank = 0 rows),
+  `CGWB` / `Central Ground Water Board` return 0 rows for Delhi East, and
+  `/masterAgency/districAgencyList` (plus a few guessed variants) is a 404. Open the Ground Water
+  Level page on indiawris.gov.in, pick a state/district, and copy the agency request (URL + body)
+  and the exact CGWB agency spelling from the browser network tab.
+- Matcher on the 752 unique real WRIS names: exact 626, alias 54, fuzzy 40, none 32. The fuzzy
+  matches all look right (spelling variants such as Hazaribag/Hazaribagh). Unmatched ones need
+  alias rows, e.g. EAST/WEST NIMAR (Khandwa/Khargone), G.B. Nagar, Jyotiba Phule Nagar (Amroha),
+  Sant Ravidas Nagar (Bhadohi), Mukatsar, Coorg, Dakshin Kannada, Trichur, Paschim Singbhum,
+  Baleshwar, Sonapur, Mumbai City/Suburban, Dohad, Dantewada, Kanker, Barddhaman, Medinipur
+  variants, Telangana new districts. Some WRIS rows are in the wrong state (MP/Rajnandgaon,
+  AP/Khammam, Gujarat/Daman, Diu) and need cross-state aliases or can be dropped. Re-run with
+  `python pipeline/fetch.py --discover > wris.csv; python pipeline/district_match.py wris.csv`.
+
 ## Next steps
-1. In a new session, first test reachability: `curl -sS -m 20 -o /dev/null -w "%{http_code}\n" https://indiawris.gov.in/`
-   and `curl -sS "$HTTPS_PROXY/__agentproxy/status"` (check `recentRelayFailures`). If still
-   reset, run the fetch locally instead.
-2. If reachable: `--discover`, build `pipeline/targets.csv` (state,district,agency), run `fetch.py`
-   (test one district first), confirm what `dataValue` means, check 0.0 handling.
+1. Find the agency endpoint or names (see above), fill `pipeline/targets.csv`, run `fetch.py` for
+   one district first, confirm what `dataValue` means, check 0.0 handling (the first live Delhi East
+   telemetric reading, station PIZ10218, was again 0.0).
+2. Add the unmatched aliases above to `district_aliases.csv`.
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check, and tuning
    the alias table against real WRIS names.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,

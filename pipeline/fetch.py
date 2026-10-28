@@ -6,8 +6,8 @@ API (from https://indiawris.gov.in/swagger-ui/index.html, "Data API Based On Adm
 
 The API is queried per (state, district, agency), so you need a targets file listing them:
     pipeline/targets.csv   columns: state,district,agency
-Build it with `python pipeline/fetch.py --discover` (calls the master endpoints and prints what
-comes back) or by hand from the site's drop-downs.
+Build it with `python pipeline/fetch.py --discover > pipeline/targets.csv` (lists states and
+districts; the agency column must still be filled in) or by hand from the site's drop-downs.
 
 Only pre-monsoon (Mar-May) and post-monsoon (Oct-Dec) readings are requested, and telemetric
 (minute-level) readings are reduced to one median per station per day while streaming, so output
@@ -18,7 +18,8 @@ Output columns (what aggregate.py reads): station_id,lat,lon,date,level_m_bgl
 ASSUMPTION to verify against CGWB/WRIS docs: dataValue (unit "m") is depth to water below ground
 level for datatypeCode GGZ. Rows whose unit is not "m" are skipped.
 
-Run this from a machine that can reach indiawris.gov.in; the Claude cloud sandbox cannot.
+Run this from a machine that can reach indiawris.gov.in (an Indian IP); the Claude cloud sandbox
+and GitHub-hosted runners cannot.
 """
 import argparse
 import csv
@@ -103,15 +104,18 @@ def reduce_daily(rows: list[dict]) -> list[tuple[str, float, float, str, float]]
 
 
 def discover() -> None:
-    """Print what the master endpoints return so targets.csv can be built. Request bodies are
-    not in the swagger text, so these are best-effort; paste any error back to the maintainer."""
-    for method, path, body in [("POST", "/masterState/StateList", {}), ("GET", "/masterAgency/findAll", None)]:
-        try:
-            print(method, path, "->", json.dumps(call(method, path, body=body))[:2000])
-        except Exception as e:  # noqa: BLE001 - diagnostic output
-            print(method, path, "failed:", e)
-    print("\nFor districts try POST /masterDistrict/getDistrictbyState and POST /masterAgency/districAgencyList;"
-          "\ncapture the request body from the browser's network tab on indiawris.gov.in.")
+    """Print every (state, district) India-WRIS has groundwater data for, as CSV, so targets.csv
+    can be built. The master endpoints are not in the swagger; these bodies were found by trial on
+    2026-10-28. The agency list endpoint is still unknown (districAgencyList is a 404), so the
+    agency column is left empty: fill it from the site's drop-down or the browser network tab."""
+    body = {"datasetcode": "GWATERLVL"}
+    w = csv.writer(sys.stdout)
+    w.writerow(["state", "district", "agency"])
+    for s in rows_of(call("POST", "/masterState/StateList", body=body)):
+        districts = rows_of(call("POST", "/masterDistrict/getDistrictbyState", body={**body, "statecode": s["statecode"]}))
+        for d in districts:
+            w.writerow([s["state"], d["districtname"], ""])
+        time.sleep(0.5)
 
 
 def main() -> None:
