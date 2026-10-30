@@ -183,8 +183,32 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   horizontal overflow, no console errors (a favicon 404 fixed with an inline icon). Ludhiana:
   22.1 m pre-monsoon 2026, 0.40 m/year deeper long-term, post-monsoon deeper than pre-monsoon.
 
+## CGWB check (2026-10-30)
+- Reference: CGWB Ground Water Year Book 2023-24 (cgwb.gov.in, reachable from the local machine),
+  annexures 1 and 3: per state, % of manual-network wells in each depth band for pre-monsoon (May)
+  and November 2023. Script: `python pipeline/validate_cgwb.py <pdf> --year 2023`.
+- **Pre-monsoon 2023 agrees well.** Over the 25 states with data on both sides, % per band
+  CGWB 6.6 / 33.5 / 40.7 / 14.8 / 2.8 / 1.7 vs ours 6.0 / 31.1 / 40.0 / 16.8 / 4.2 / 1.8
+  (15,565 vs 13,088 wells); median band agrees in 22/25 states; big states within 1-4 points
+  (Kerala 0.8, Odisha 1.1, MP 1.7, Karnataka 2.0, Chhattisgarh 2.5, Maharashtra 3.9, Rajasthan 4.6).
+- **Gaps are in India-WRIS, not the pipeline:** WRIS has no CGWB manual readings for Haryana, Punjab,
+  Delhi, HP in pre-monsoon 2023 and only 8 for UP; those districts rely on telemetric/state wells
+  (flagged "estimated"). November 2023 manual data is mostly missing from WRIS (about 4,400 manual
+  wells vs ~15,000 in Nov 2021/2022; none for Indore, Thrissur, Anand when queried live), so
+  post-monsoon from 2023 is thin. West Bengal, Telangana, AP, Tamil Nadu have more lat/lon-coded
+  manual wells than CGWB lists (state agencies use the same codes) and differ by 10-18 points.
+- **Bug found and fixed: "manual" was decided by station ID** (15-digit lat/lon code), but CGWB and
+  West Bengal telemetric wells use those codes too (checked live: Bankura CGWB, 152 of 154 stations
+  coded, mostly telemetric). Now a station-season is manual only if it has a lat/lon code AND <= 3
+  reading days in the season. Tried frequency alone first: it pulled in ~6,000 Rajasthan state wells
+  (deeper network) and made districts jump between runs (Karauli 11.7 -> 26.6 m 1995-2005).
+  A year also pins a run only if its manual wells are >= 3 and >= half of its stations (three sparse
+  telemetric wells among 25 had pinned Delhi 2023-26 at 2.1 m). Result vs the previously published
+  data: 85% of values unchanged, 848 of 47,173 moved > 5 m (mostly Rajasthan, UP, Tamil Nadu,
+  Haryana); 2015 -> 2024 median change 0.30 m (manual-pinned) and 0.27 m (estimated) districts.
+
 ## Next steps
-1. Spot-check a few districts against published CGWB yearbook figures.
+1. Merge the corrected data to `main` so the live site picks it up.
 2. (Aliases done, see above.)
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,
