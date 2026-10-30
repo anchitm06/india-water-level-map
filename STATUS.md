@@ -148,10 +148,30 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   (2015: 104 stations, 2020: 3), no page errors; the chart tooltip text was not checked visually.
   `npm ci` was needed locally before `npm run build`.
 
+## Full fetch and aggregate (2026-10-30)
+- Full fetch done: all 100,380 windows (19 failed windows fetched on a re-run). 9.07M daily readings,
+  65,823 stations (1,290 outside every district polygon), 387 MB `pipeline/raw/readings.csv`.
+  Post-monsoon 2026 was fetched while in progress and is marked done: to refresh it, delete the
+  `|2026|post` lines from `pipeline/raw/done.log` and re-run `fetch.py`.
+- aggregate.py streams the file (peak < 1 GB; the list-based version risked running out of
+  memory with ~4 GB free). Cleaning: 147k daily spikes, 5,187 station-season jumps dropped.
+- **Network change problem found and fixed.** Plain district medians made the typical district
+  ~2.5 m deeper 2015 -> 2024 (pre), but the 5,541 stations measured in both years changed only
+  0.2 m. Cause: in 2024 only ~9% of stations are CGWB manual wells (median 5.3 m); the rest are
+  telemetric/state wells tapping deeper water (median 13 m). Now `district_series` chain-links
+  each district over stations measured in both years and pins each run to CGWB manual wells
+  (15-digit lat/lon IDs, `is_manual`); a run with no manual wells continues from the previous
+  run's level if within 5 years, else uses its own median; both flagged `mixed` and shown in the
+  panel as "estimated, no manual wells". Result, 2015 -> 2024 pre median change: 0.33 m in
+  manual-pinned districts (409), 0.23 m in mixed ones (142). The 2024 map now matches the 2015
+  pattern with deepening in the north-west. ASSUMPTION: 15-digit numeric IDs = CGWB manual network.
+- `public/data/levels.json` with real data is generated locally but NOT committed yet (waiting
+  for review); the committed file is still the placeholder.
+
 ## Next steps
-1. Full fetch running on the local machine since 2026-10-28: `python pipeline/fetch.py --workers 3`
-   (resumable; stop with Ctrl+C and re-run any time). Then `python pipeline/aggregate.py` and
-   check the values against published CGWB figures.
+1. Review the real `levels.json` (`python pipeline/aggregate.py`, `npm run dev`), check a few
+   districts against published CGWB yearbook figures, then commit it (this replaces the placeholder
+   and hides the banner).
 2. (Aliases done, see above.)
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,

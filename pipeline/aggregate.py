@@ -1,14 +1,17 @@
-"""Aggregate station readings to district x year x season medians.
+"""Aggregate station readings to district x year x season water levels.
 
 Inputs:
   pipeline/raw/readings.csv   station_id,lat,lon,date,level_m_bgl  (date is YYYY-MM-DD)
   public/data/districts.geojson  features with properties id, name, state
 Output:
   public/data/levels.json  (same schema generate_placeholder.py writes, plus per district
-  "stations": {pre: [...], post: [...]}, the number of stations behind each median)
+  "stations": {pre: [...], post: [...]}, the number of stations measured that year, and
+  "mixed": {pre: [...], post: [...]}, 1 where the level could not be pinned to manual wells)
 
 Seasons follow CGWB practice: pre-monsoon = Mar-May, post-monsoon = Oct-Dec.
 Districts with no readings for a year/season get null, never an interpolated value.
+District levels are chain-linked over stations measured in both years, not plain medians;
+see district_series for why.
 
 Each station is reduced to one value per (year, season) before the district median, so a
 telemetric station with 90 daily readings counts the same as a manual well read once. Outliers
@@ -23,6 +26,7 @@ neighbours (e.g. 1994 followed by a gap to 2005) is kept rather than judged agai
 import csv
 import json
 import statistics
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -33,6 +37,8 @@ SPIKE_K, SPIKE_FLOOR_M = 5, 2.0  # daily readings vs the station's median for th
 JUMP_K, JUMP_FLOOR_M = 5, 15.0  # a station's season value vs its own nearby seasons
 JUMP_WINDOW_Y = 5  # nearby = same station within this many years, so trends and recoveries pass
 MIN_HISTORY = 3  # nearby seasons needed to judge; isolated seasons (data gaps) are kept
+LINK_WINDOW_Y = 5  # district_series: how far back a year may look for shared stations
+MIN_PAIRS = 3  # shared stations needed to trust a year-to-year link
 
 
 def far_from(ref: list[float], k: float, floor: float):
@@ -45,17 +51,19 @@ def far_from(ref: list[float], k: float, floor: float):
 def station_seasons(readings) -> tuple[dict[tuple[str, int, str], float], Counter]:
     """(station, YYYY-MM-DD, level) rows -> ({(station, year, season): level}, drop counts).
     Repeated (station, date) rows, which a fetch interrupted mid-window can leave, count once."""
-    daily: dict[tuple[str, str], float] = {}
+    # Grouped straight into station-seasons, keyed by date inside, so the full file (8.5M rows in
+    # Oct 2026) is never held as one flat list and repeated dates count once.
+    by_season: dict[tuple[str, int, str], dict[str, float]] = defaultdict(dict)
     for sid, date, level in readings:
-        if SEASON.get(int(date[5:7])) and 0 < level < 200:  # fetch.clean_level applies the same bounds
-            daily[(sid, date)] = level
-    groups: dict[tuple[str, int, str], list[float]] = defaultdict(list)
-    for (sid, date), level in daily.items():
-        groups[(sid, int(date[:4]), SEASON[int(date[5:7])])].append(level)
+        season = SEASON.get(int(date[5:7]))
+        if season and 0 < level < 200:  # fetch.clean_level applies the same bounds
+            by_season[(sid, int(date[:4]), season)][sys.intern(date)] = level
 
     dropped: Counter = Counter()
     seasonal = {}
-    for key, levels in groups.items():
+    while by_season:
+        key, days = by_season.popitem()
+        levels = list(days.values())
         far = far_from(levels, SPIKE_K, SPIKE_FLOOR_M) if len(levels) >= 3 else (lambda v: False)
         bad = {i for i, v in enumerate(levels) if far(v)}
         if bad:
@@ -78,6 +86,68 @@ def station_seasons(readings) -> tuple[dict[tuple[str, int, str], float], Counte
     return seasonal, dropped
 
 
+def is_manual(sid: str) -> bool:
+    """CGWB's manual well network uses 15-digit lat/lon codes (283745077141501 = 28 37 45 N,
+    77 14 15 E, well 01); telemetric and most state-agency stations do not."""
+    return len(sid) == 15 and sid.isdigit()
+
+
+def district_series(by_year: dict[int, dict[str, float]], years: list[int]) -> tuple[list, list]:
+    """One district and season: {year: {station: level}} -> (levels, mixed) aligned with `years`.
+
+    The set of measured wells changes over time (deep telemetric piezometers dominate from 2022),
+    so a plain median per year tracks the well mix, not the water table. Instead:
+      - trend: each year is linked to the latest earlier year within LINK_WINDOW_Y that shares at
+        least MIN_PAIRS stations, by the median change of those shared stations (chain-linking);
+      - level: each chained run is pinned to the median of CGWB manual wells in the run's year
+        with the most of them, the network CGWB's own yearbooks report;
+      - fallback: with no link the chain restarts. A run with no manual wells continues from the
+        previous run's last level if that ended within LINK_WINDOW_Y, else it is pinned to its
+        best-covered year's all-station median; both are flagged mixed (1). On the Oct 2026 data
+        pinning such runs to their own median made 2015->2024 change 2.1 m in those districts vs
+        0.3 m where manual wells pin the level."""
+    runs: list[list[int]] = []
+    rel: dict[int, float] = {}
+    for y in sorted(by_year):
+        link = None
+        if runs:
+            for back in reversed(runs[-1]):
+                if y - back > LINK_WINDOW_Y:
+                    break
+                shared = by_year[y].keys() & by_year[back].keys()
+                if len(shared) >= MIN_PAIRS:
+                    link = (back, statistics.median(by_year[y][s] - by_year[back][s] for s in shared))
+                    break
+        if link:
+            rel[y] = rel[link[0]] + link[1]
+            runs[-1].append(y)
+        else:
+            rel[y] = 0.0
+            runs.append([y])
+
+    level: dict[int, float] = {}
+    mixed: dict[int, int] = {}
+    for n, run in enumerate(runs):
+        manual = {y: [v for s, v in by_year[y].items() if is_manual(s)] for y in run}
+        anchor = max(run, key=lambda y: len(manual[y]))
+        flag = 0
+        if manual[anchor]:
+            offset = statistics.median(manual[anchor]) - rel[anchor]
+        elif n and run[0] - runs[n - 1][-1] <= LINK_WINDOW_Y:
+            # No manual wells (typically a new telemetric network from 2020+) and nothing shared
+            # with the run before: continue from that run's last level. That assumes no change over
+            # the gap (tenths of a metre typically), far less wrong than pinning to deeper new wells.
+            offset, flag = level[runs[n - 1][-1]] - rel[run[0]], 1
+        else:
+            anchor = max(run, key=lambda y: len(by_year[y]))
+            offset, flag = statistics.median(by_year[anchor].values()) - rel[anchor], 1
+        for y in run:
+            level[y] = max(rel[y] + offset, 0.0)  # a chained run can't put water above ground on average
+            mixed[y] = flag
+    return ([round(level[y], 2) if y in level else None for y in years],
+            [mixed.get(y, 0) for y in years])
+
+
 def main() -> None:
     from shapely.geometry import Point, shape
     from shapely.strtree import STRtree
@@ -87,35 +157,48 @@ def main() -> None:
     tree = STRtree([shape(f["geometry"]) for f in gj["features"]])
 
     pos: dict[str, tuple[float, float]] = {}
-    with open(ROOT / "pipeline/raw/readings.csv", newline="", encoding="utf-8") as fh:
-        rows = []
-        for row in csv.DictReader(fh):
-            pos.setdefault(row["station_id"], (float(row["lon"]), float(row["lat"])))
-            rows.append((row["station_id"], row["date"], float(row["level_m_bgl"])))
-    seasonal, dropped = station_seasons(rows)
+    n_rows = 0
+
+    def readings():
+        nonlocal n_rows
+        with open(ROOT / "pipeline/raw/readings.csv", newline="", encoding="utf-8") as fh:
+            for sid, lat, lon, date, level in csv.reader(fh):
+                if sid == "station_id":  # header
+                    continue
+                sid = sys.intern(sid)
+                if sid not in pos:
+                    pos[sid] = (float(lon), float(lat))
+                n_rows += 1
+                yield sid, date, float(level)
+
+    seasonal, dropped = station_seasons(readings())
 
     district_of = {}
     for sid, xy in pos.items():
         hit = next(iter(tree.query(Point(xy), predicate="within")), None)
         district_of[sid] = None if hit is None else ids[hit]
 
-    buckets: dict[tuple[str, int, str], list[float]] = defaultdict(list)
+    groups: dict[tuple[str, str], dict[int, dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
     for (sid, year, season), level in seasonal.items():
         if district_of[sid] is not None:
-            buckets[(district_of[sid], year, season)].append(level)
+            groups[(district_of[sid], season)][year][sid] = level
 
-    years = sorted({y for _, y, _ in buckets})
+    years = sorted({y for g in groups.values() for y in g})
     data = {}
     for did in ids:
-        data[did] = {s: [round(statistics.median(v), 2) if (v := buckets.get((did, y, s))) else None for y in years]
-                     for s in ("pre", "post")}
-        data[did]["stations"] = {s: [len(buckets.get((did, y, s), ())) for y in years] for s in ("pre", "post")}
+        d: dict = {"stations": {}, "mixed": {}}
+        for s in ("pre", "post"):
+            by_year = groups.get((did, s), {})
+            d[s], d["mixed"][s] = district_series(by_year, years)
+            d["stations"][s] = [len(by_year.get(y, ())) for y in years]
+        data[did] = d
     (ROOT / "public/data/levels.json").write_text(json.dumps({
-        "meta": {"placeholder": False, "source": "India-WRIS / CGWB", "unit": "m below ground level"},
+        "meta": {"placeholder": False, "source": "India-WRIS / CGWB", "unit": "m below ground level",
+                 "method": "chain-linked on stations measured in both years, pinned to CGWB manual wells"},
         "years": years, "data": data}, separators=(",", ":")), encoding="utf-8")
 
     outside = sum(1 for d in district_of.values() if d is None)
-    print(f"{len(rows)} daily readings, {len(pos)} stations ({outside} outside every district), "
+    print(f"{n_rows} daily readings, {len(pos)} stations ({outside} outside every district), "
           f"{len(seasonal)} station-seasons kept; dropped {dict(dropped)}")
     print(f"{len(years)} years, {sum(1 for d in data.values() for v in d.values() for x in v if x is not None)} "
           f"district-season values -> public/data/levels.json")

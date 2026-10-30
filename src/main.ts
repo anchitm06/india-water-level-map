@@ -6,8 +6,9 @@ type Season = "pre" | "post";
 interface Levels {
   meta: { placeholder: boolean; source: string; unit: string };
   years: number[];
-  // stations: how many stations each median is based on (absent in placeholder data)
-  data: Record<string, Record<Season, (number | null)[]> & { stations?: Record<Season, number[]> }>;
+  // stations: how many stations were measured; mixed: 1 where no manual wells pin the level
+  // (both absent in placeholder data)
+  data: Record<string, Record<Season, (number | null)[]> & { stations?: Record<Season, number[]>; mixed?: Record<Season, number[]> }>;
 }
 
 const stationsText = (n: number | undefined) => n == null ? "" : ` (${n} station${n === 1 ? "" : "s"})`;
@@ -28,6 +29,7 @@ async function main() {
     fetch(`${base}data/levels.json`).then((r) => r.json() as Promise<Levels>),
   ]);
   $("banner").hidden = !levels.meta.placeholder;
+  $("method").hidden = levels.meta.placeholder;
 
   const yearEl = $<HTMLInputElement>("year");
   yearEl.min = "0"; yearEl.max = String(levels.years.length - 1); yearEl.value = yearEl.max;
@@ -70,7 +72,8 @@ async function main() {
     $("d-name").textContent = f.properties.name;
     const v = valueAt(id);
     const n = series.stations?.[seasonEl.value as Season]?.[Number(yearEl.value)];
-    $("d-sub").textContent = `${f.properties.state} · ${levels.years[Number(yearEl.value)]} ${seasonEl.selectedOptions[0].text}: ${v == null ? "no data" : v.toFixed(1) + " m bgl" + stationsText(n)}`;
+    const mixed = series.mixed?.[seasonEl.value as Season]?.[Number(yearEl.value)] ? "; estimated, no manual wells" : "";
+    $("d-sub").textContent = `${f.properties.state} · ${levels.years[Number(yearEl.value)]} ${seasonEl.selectedOptions[0].text}: ${v == null ? "no data" : v.toFixed(1) + " m bgl" + stationsText(n).replace(/\)$/, mixed + ")")}`;
     chart?.destroy();
     chart = new Chart($<HTMLCanvasElement>("chart"), {
       type: "line",
