@@ -1,27 +1,8 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Chart } from "chart.js/auto";
-
-type Season = "pre" | "post";
-interface Levels {
-  meta: { placeholder: boolean; source: string; unit: string };
-  years: number[];
-  // stations: how many stations were measured; mixed: 1 where no manual wells pin the level
-  // (both absent in placeholder data)
-  data: Record<string, Record<Season, (number | null)[]> & { stations?: Record<Season, number[]>; mixed?: Record<Season, number[]> }>;
-}
-
-const stationsText = (n: number | undefined) => n == null ? "" : ` (${n} station${n === 1 ? "" : "s"})`;
-
-// Depth to water (m bgl) classes, sequential light -> dark; deeper is worse.
-const CLASSES: [number, string][] = [
-  [2, "#e6f2f7"], [5, "#b3d7e6"], [10, "#7fb7d4"], [20, "#e8c26a"], [40, "#d2793a"], [Infinity, "#8c2d1b"],
-];
-const NO_DATA = "#c9cdd2";
-const colorFor = (v: number | null | undefined) => v == null ? NO_DATA : CLASSES.find(([max]) => v < max)![1];
-
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const base = import.meta.env.BASE_URL;
+import { $, base, CLASSES, colorFor, NO_DATA, stationsText, type Levels, type Season } from "./shared";
+import { createDetailView } from "./detail";
 
 async function main() {
   const [gj, levels] = await Promise.all([
@@ -98,7 +79,7 @@ async function main() {
     map.addSource("d", { type: "geojson", data: gj });
     map.addLayer({ id: "fill", type: "fill", source: "d", paint: { "fill-color": NO_DATA, "fill-opacity": 0.9 } });
     map.addLayer({ id: "line", type: "line", source: "d", paint: { "line-color": "#ffffff", "line-width": 0.5 } });
-    map.addLayer({ id: "sel", type: "line", source: "d", paint: { "line-color": "#000", "line-width": 2 }, filter: ["==", ["get", "id"], ""] });
+    map.addLayer({ id: "sel", type: "line", source: "d", paint: { "line-color": "#000", "line-width": 2 }, filter: ["==", ["get", "id"], selected ?? ""] });
     paint();
     map.on("click", "fill", (e) => {
       selected = e.features![0].properties!.id as string;
@@ -135,6 +116,23 @@ async function main() {
     a.download = `${selected}.csv`;
     a.click();
   });
+
+  // Full-page district view, addressable as #district=<id> so it can be shared.
+  const detail = createDetailView(gj, levels, (s, yi) => {
+    seasonEl.value = s; yearEl.value = String(yi); // keep what the reader chose there
+    if (map.isStyleLoaded()) paint();
+  });
+  $("open-detail").addEventListener("click", () => { if (selected) location.hash = `district=${selected}`; });
+  const route = () => {
+    const id = location.hash.match(/district=([\w-]+)/)?.[1];
+    if (id && levels.data[id]) {
+      selected = id;
+      if (map.isStyleLoaded()) map.setFilter("sel", ["==", ["get", "id"], id]);
+      detail.open(id, seasonEl.value as Season, Number(yearEl.value));
+    } else detail.close();
+  };
+  window.addEventListener("hashchange", route);
+  route();
 }
 
 main();

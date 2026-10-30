@@ -7,6 +7,7 @@ Output:
   public/data/levels.json  (same schema generate_placeholder.py writes, plus per district
   "stations": {pre: [...], post: [...]}, the number of stations measured that year, and
   "mixed": {pre: [...], post: [...]}, 1 where the level could not be pinned to manual wells)
+  public/data/stations/<district id>.json  (per-station values for the detail view)
 
 Seasons follow CGWB practice: pre-monsoon = Mar-May, post-monsoon = Oct-Dec.
 Districts with no readings for a year/season get null, never an interpolated value.
@@ -196,12 +197,40 @@ def main() -> None:
         "meta": {"placeholder": False, "source": "India-WRIS / CGWB", "unit": "m below ground level",
                  "method": "chain-linked on stations measured in both years, pinned to CGWB manual wells"},
         "years": years, "data": data}, separators=(",", ":")), encoding="utf-8")
+    n_files = write_station_files(seasonal, district_of, pos)
 
     outside = sum(1 for d in district_of.values() if d is None)
     print(f"{n_rows} daily readings, {len(pos)} stations ({outside} outside every district), "
           f"{len(seasonal)} station-seasons kept; dropped {dict(dropped)}")
-    print(f"{len(years)} years, {sum(1 for d in data.values() for v in d.values() for x in v if x is not None)} "
-          f"district-season values -> public/data/levels.json")
+    print(f"{len(years)} years, {sum(1 for d in data.values() for s in ('pre', 'post') for x in d[s] if x is not None)} "
+          f"district-season values -> public/data/levels.json; {n_files} station files -> public/data/stations/")
+
+
+def write_station_files(seasonal: dict, district_of: dict, pos: dict) -> int:
+    """public/data/stations/<district id>.json: the district's cleaned station-season values, for the
+    detail view's station map (loaded on demand; ~18 MB in total vs 387 MB of raw readings).
+    Values are sparse, keyed by year: {"id", "lat", "lon", "manual", "pre": {"2015": 6.7}, "post": {...}}."""
+    by_district: dict[str, dict[str, dict]] = defaultdict(dict)
+    for (sid, year, season), level in seasonal.items():
+        did = district_of.get(sid)
+        if did is None:
+            continue
+        st = by_district[did].get(sid)
+        if st is None:
+            lon, lat = pos[sid]
+            st = by_district[did][sid] = {"id": sid, "lat": lat, "lon": lon, "manual": is_manual(sid), "pre": {}, "post": {}}
+        st[season][str(year)] = round(level, 2)
+    out = ROOT / "public/data/stations"
+    out.mkdir(exist_ok=True)
+    for old in out.glob("*.json"):  # districts can lose all their stations between runs
+        old.unlink()
+    for did, stations in by_district.items():
+        for st in stations.values():
+            for s in ("pre", "post"):
+                st[s] = dict(sorted(st[s].items()))
+        (out / f"{did}.json").write_text(json.dumps({"stations": sorted(stations.values(), key=lambda s: s["id"])},
+                                                    separators=(",", ":")), encoding="utf-8")
+    return len(by_district)
 
 
 if __name__ == "__main__":
