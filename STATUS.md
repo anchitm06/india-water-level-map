@@ -165,13 +165,11 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   panel as "estimated, no manual wells". Result, 2015 -> 2024 pre median change: 0.33 m in
   manual-pinned districts (409), 0.23 m in mixed ones (142). The 2024 map now matches the 2015
   pattern with deepening in the north-west. ASSUMPTION: 15-digit numeric IDs = CGWB manual network.
-- `public/data/levels.json` with real data is generated locally but NOT committed yet (waiting
-  for review); the committed file is still the placeholder.
+- Real `public/data/levels.json` committed 2026-10-30 (replaces the placeholder; banner hidden).
+  Regenerate with `python pipeline/aggregate.py` after any new fetch.
 
 ## Next steps
-1. Review the real `levels.json` (`python pipeline/aggregate.py`, `npm run dev`), check a few
-   districts against published CGWB yearbook figures, then commit it (this replaces the placeholder
-   and hides the banner).
+1. Spot-check a few districts against published CGWB yearbook figures.
 2. (Aliases done, see above.)
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,
