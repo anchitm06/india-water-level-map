@@ -20,6 +20,12 @@ from shapely.ops import unary_union
 URL = "https://raw.githubusercontent.com/udit-001/india-maps-data/main/geojson/india.geojson"
 OUT = Path(__file__).resolve().parent.parent / "public" / "data" / "districts.geojson"
 SIMPLIFY_DEG = 0.01
+# The all-India file keeps only a few islands per district (Lakshadweep was just Minicoy), so
+# island territories take their geometry from the source's detailed per-state files, simplified
+# less so islands a few km across survive.
+ISLAND_STATES = ["lakshadweep", "andaman-and-nicobar-islands"]
+STATE_URL = "https://raw.githubusercontent.com/udit-001/india-maps-data/main/geojson/states/{}.geojson"
+ISLAND_SIMPLIFY_DEG = 0.002
 
 
 def main() -> None:
@@ -51,9 +57,17 @@ def main() -> None:
         while did in acc:
             did += "x"
         acc[did] = [p, [g]]
+    islands = {}
+    for state in ISLAND_STATES:
+        for f in json.load(urllib.request.urlopen(STATE_URL.format(state)))["features"]:
+            p = f["properties"]
+            islands[f"{p['st_code']}-{p.get('dt_code') or '000'}"] = shape(f["geometry"]).buffer(0)
     feats = []
     for did, (p, geoms) in acc.items():
-        g = unary_union(geoms).simplify(SIMPLIFY_DEG, preserve_topology=True)
+        if did in islands:
+            g = islands[did].simplify(ISLAND_SIMPLIFY_DEG, preserve_topology=True)
+        else:
+            g = unary_union(geoms).simplify(SIMPLIFY_DEG, preserve_topology=True)
         if g.is_empty:
             continue
         geom = json.loads(json.dumps(mapping(g)), parse_float=lambda s: round(float(s), 3))

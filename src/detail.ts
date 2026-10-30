@@ -1,6 +1,6 @@
 import maplibregl from "maplibre-gl";
 import { Chart } from "chart.js/auto";
-import { $, base, colorFor, NO_DATA, SEASON_LABEL, SEASONS, stationsText, type Levels, type Season, type Station } from "./shared";
+import { $, base, colorFor, NO_DATA, SEASON_LABEL, SEASONS, stationsText, wellName, type Levels, type Season, type Station } from "./shared";
 import { districtStats } from "./stats";
 
 const ordinal = (n: number) => {
@@ -36,7 +36,9 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
   const yearIdx = () => Number(yearEl.value);
   const loadStations = (id: string) => {
     if (!cache.has(id)) {
-      cache.set(id, fetch(`${base}data/stations/${id}.json`).then((r) => (r.ok ? r.json() : { stations: [] })).then((j) => j.stations));
+      // no file = no wells (404 on Pages; dev/preview servers answer with index.html instead)
+      cache.set(id, fetch(`${base}data/stations/${id}.json`).then((r) => (r.ok ? r.json() : { stations: [] }))
+        .then((j) => j.stations ?? [], () => []));
     }
     return cache.get(id)!;
   };
@@ -96,8 +98,14 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
   function showWell(st: Station | null) {
     wellChart?.destroy();
     wellChart = null;
-    if (!st) { $("p-well-title").textContent = "Click a well on the map to see its history"; return; }
-    $("p-well-title").textContent = `Well ${st.id}${st.manual ? " (CGWB manual network)" : ""}`;
+    if (!st) {
+      $("p-well-title").textContent = "Click a well on the map to see its history";
+      $("p-well-sub").textContent = "";
+      return;
+    }
+    $("p-well-title").textContent = wellName(st);
+    const where = st.place && st.km != null && st.km >= 0.5 ? `${st.km} km from ${st.place} · ` : "";
+    $("p-well-sub").textContent = `${where}${st.manual ? "read by hand" : "automatic sensor"} · station ${st.id}`;
     wellChart = new Chart($<HTMLCanvasElement>("p-well-chart"), {
       type: "line",
       data: {
@@ -118,7 +126,8 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
       features: current!.stations.map((st) => {
         const v = st[season()][y] ?? null;
         return { type: "Feature", geometry: { type: "Point", coordinates: [st.lon, st.lat] },
-                 properties: { id: st.id, has: v != null, color: v == null ? NO_DATA : colorFor(v), manual: st.manual } };
+                 properties: { id: st.id, has: v != null, color: v == null ? NO_DATA : colorFor(v), manual: st.manual,
+                               label: `${wellName(st)}: ${v == null ? "not measured" : `${v.toFixed(1)} m`}` } };
       }),
     };
   }
@@ -127,7 +136,7 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
     const { feature, stations } = current!;
     const measured = stations.filter((st) => st[season()][String(levels.years[yearIdx()])] != null).length;
     $("p-map-note").textContent = stations.length
-      ? `${stations.length} wells on record, ${measured} measured in ${SEASON_LABEL[season()].toLowerCase()} ${levels.years[yearIdx()]} (coloured by depth; grey = not measured that year). Dark outline = CGWB manual well.`
+      ? `${stations.length} wells on record, ${measured} measured in ${SEASON_LABEL[season()].toLowerCase()} ${levels.years[yearIdx()]} (coloured by depth; grey = not measured that year). Dark outline = well read by hand. Hover a well for its location, click for its history.`
       : "No well data for this district.";
     const district = { type: "FeatureCollection", features: [feature] };
     const apply = () => {
@@ -139,7 +148,9 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
         container: "p-map",
         style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#eef2f5" } }] },
         bounds: bbox(feature.geometry), fitBoundsOptions: { padding: 24 },
+        attributionControl: { customAttribution: 'Place names: <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0)' },
       });
+      const hover = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
       map.on("load", () => {
         map!.addSource("district", { type: "geojson", data: district as any });
@@ -154,8 +165,12 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
           },
         });
         map!.on("click", "wells", (e) => showWell(current!.stations.find((s) => s.id === e.features![0].properties!.id) ?? null));
-        map!.on("mouseenter", "wells", () => (map!.getCanvas().style.cursor = "pointer"));
-        map!.on("mouseleave", "wells", () => (map!.getCanvas().style.cursor = ""));
+        map!.on("mousemove", "wells", (e) => {
+          map!.getCanvas().style.cursor = "pointer";
+          const f = e.features![0];
+          hover.setLngLat((f.geometry as any).coordinates).setText(f.properties!.label).addTo(map!);
+        });
+        map!.on("mouseleave", "wells", () => { map!.getCanvas().style.cursor = ""; hover.remove(); });
         apply();
       });
     } else {
