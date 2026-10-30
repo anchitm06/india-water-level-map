@@ -10,7 +10,7 @@
   <div id="map" role="application" aria-label="Map of India groundwater levels"></div>
   <aside id="panel">
     <h1>India groundwater levels</h1>
-    <div id="banner" hidden>Placeholder data: synthetic grid, not real districts or readings.</div>
+    <div id="banner" hidden>Placeholder data: district boundaries are real, but the water levels are synthetic, not real readings.</div>
     <div class="row">
       <label>Season
         <select id="season"><option value="pre">Pre-monsoon</option><option value="post">Post-monsoon</option></select>
@@ -29,6 +29,7 @@
     </section>
     <p class="hint" id="hint">Click a district to see its history.</p>
     <p class="note">Depth in metres below ground level: higher means a deeper (worse) water table.</p>
+    <p class="note" id="method" hidden>The wells measured change over time, so year-to-year change uses only wells measured in both years, and levels are pinned to CGWB's manual well network. Source: India-WRIS.</p>
   </aside>
   <script type="module" src="/src/main.ts"></script>
 </body>

@@ -7,6 +7,7 @@ frontend can be built and tested while India-WRIS is unreachable. The real pipel
 import json
 import math
 import random
+import sys
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "public" / "data"
@@ -29,8 +30,32 @@ def inside(x: float, y: float) -> bool:
     return ok
 
 
+def from_districts(rng: random.Random) -> dict:
+    """Random levels keyed to the real districts in districts.geojson (see build_districts.py)."""
+    data = {}
+    for f in json.loads((OUT / "districts.geojson").read_text())["features"]:
+        ring = f["geometry"]["coordinates"]
+        while isinstance(ring[0][0], list):
+            ring = ring[0]
+        lon, lat = ring[0]
+        base = 3 + 12 * (1 + math.sin(lon / 6) * math.cos(lat / 5)) + rng.random() * 3
+        drift = rng.uniform(-0.05, 0.25)
+        pre, post = [], []
+        for i, _ in enumerate(YEARS):
+            p = base + drift * i + rng.gauss(0, 0.8)
+            pre.append(round(max(p, 0.5), 2))
+            post.append(round(max(p - 2.5 + rng.gauss(0, 0.5), 0.3), 2))
+        data[f["properties"]["id"]] = {"pre": pre, "post": post}
+    return data
+
+
 def main() -> None:
     rng = random.Random(7)
+    if "--keep-districts" in sys.argv:
+        data = from_districts(rng)
+        write_levels(data)
+        print(f"wrote placeholder levels for {len(data)} real districts")
+        return
     feats, data = [], {}
     n = 0
     lat = 8.0
@@ -55,11 +80,15 @@ def main() -> None:
         lat += CELL
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "districts.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, separators=(",", ":")))
+    write_levels(data)
+    print(f"wrote {len(feats)} placeholder cells")
+
+
+def write_levels(data: dict) -> None:
     (OUT / "levels.json").write_text(json.dumps({
         "meta": {"placeholder": True, "source": "SYNTHETIC - not real data", "unit": "m below ground level",
                  "note": "Replace by running the pipeline against India-WRIS"},
         "years": YEARS, "data": data}, separators=(",", ":")))
-    print(f"wrote {len(feats)} placeholder cells")
 
 
 if __name__ == "__main__":

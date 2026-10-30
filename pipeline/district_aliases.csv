@@ -1,0 +1,133 @@
+state,wris_name,geojson_name,geojson_state
+Andhra Pradesh,Nellore,S.P.S. Nellore
+Andhra Pradesh,Sri Potti Sriramulu Nellore,S.P.S. Nellore
+Andhra Pradesh,Cuddapah,Y.S.R. Kadapa
+Andhra Pradesh,Kadapa,Y.S.R. Kadapa
+Andhra Pradesh,YSR Kadapa,Y.S.R. Kadapa
+Haryana,Gurgaon,Gurugram
+Uttar Pradesh,Allahabad,Prayagraj
+Uttar Pradesh,Faizabad,Ayodhya
+Uttar Pradesh,Kheri,Lakhimpur Kheri
+Uttar Pradesh,Kushi Nagar,Kushinagar
+Karnataka,Belgaum,Belagavi
+Karnataka,Bijapur,Vijayapura
+Karnataka,Gulbarga,Kalaburagi
+Karnataka,Mysore,Mysuru
+Karnataka,Shimoga,Shivamogga
+Karnataka,Chikmagalur,Chikkamagaluru
+Karnataka,Chamrajnagar,Chamarajanagara
+Karnataka,Bangalore Urban,Bengaluru Urban
+Karnataka,Bangalore Rural,Bengaluru Rural
+Karnataka,Bangalore,Bengaluru Urban
+Karnataka,Chikballapur,Chikkaballapura
+Karnataka,Ramanagar,Ramanagara
+Tamil Nadu,Kanchipuram,Kancheepuram
+Tamil Nadu,Tuticorin,Thoothukkudi
+Tamil Nadu,Thoothukudi,Thoothukkudi
+Tamil Nadu,Villupuram,Viluppuram
+Punjab,Ropar,Rupnagar
+Punjab,SAS Nagar,S.A.S. Nagar
+Punjab,Mohali,S.A.S. Nagar
+Punjab,Nawanshahr,Shahid Bhagat Singh Nagar
+Punjab,SBS Nagar,Shahid Bhagat Singh Nagar
+Punjab,Muktsar,Sri Muktsar Sahib
+Punjab,Firozepur,Ferozepur
+Maharashtra,Ahmadnagar,Ahmednagar
+Maharashtra,Aurangabad (Chhatrapati Sambhajinagar),Aurangabad
+Maharashtra,Chhatrapati Sambhajinagar,Aurangabad
+Maharashtra,Dharashiv,Osmanabad
+Maharashtra,Raigarh,Raigad
+Madhya Pradesh,Narmadapuram,Hoshangabad
+Odisha,Keonjhar,Kendujhar
+Odisha,Nowrangpur,Nabarangapur
+Odisha,Debagarh,Deogarh
+Telangana,Rangareddy,Ranga Reddy
+Telangana,Medchal-Malkajgiri,Medchal Malkajgiri
+Telangana,Komaram Bheem Asifabad,Komaram Bheem
+Telangana,Jayashankar,Jayashankar Bhupalapally
+Telangana,Bhadradri,Bhadradri Kothagudem
+Telangana,Yadadri,Yadadri Bhuvanagiri
+Telangana,Nagar Kurnool,Nagarkurnool
+West Bengal,Burdwan,Purba Bardhaman
+West Bengal,Bardhaman,Purba Bardhaman
+West Bengal,Calcutta,Kolkata
+West Bengal,Hugli,Hooghly
+West Bengal,Haora,Howrah
+West Bengal,Coochbehar,Cooch Behar
+West Bengal,Koch Bihar,Cooch Behar
+West Bengal,Maldah,Malda
+West Bengal,Medinipur East,Purba Medinipur
+West Bengal,Medinipur West,Paschim Medinipur
+West Bengal,East Midnapore,Purba Medinipur
+West Bengal,West Midnapore,Paschim Medinipur
+West Bengal,North Dinajpur,Uttar Dinajpur
+West Bengal,South Dinajpur,Dakshin Dinajpur
+Jharkhand,Sahebganj,Sahibganj
+Jharkhand,Saraikela Kharsawan,Saraikela-Kharsawan
+Jharkhand,Purbi Singhbhum,East Singhbhum
+Jharkhand,Pashchimi Singhbhum,West Singhbhum
+Gujarat,Panchmahals,Panchmahal
+Gujarat,The Dangs,Dang
+Gujarat,Dangs,Dang
+Gujarat,Banaskantha,Banas Kantha
+Gujarat,Sabarkantha,Sabar Kantha
+Gujarat,Kachchh,Kutch
+Bihar,Monghyr,Munger
+Bihar,Purnea,Purnia
+Bihar,Saran (Chapra),Saran
+Bihar,Kaimur (Bhabua),Kaimur
+Bihar,Pashchim Champaran,West Champaran
+Bihar,Purba Champaran,East Champaran
+Rajasthan,Sri Ganganagar,Ganganagar
+Rajasthan,Dhaulpur,Dholpur
+Rajasthan,Jhunjhunun,Jhunjhunu
+Uttarakhand,Hardwar,Haridwar
+Uttarakhand,US Nagar,Udham Singh Nagar
+Uttarakhand,Pauri,Pauri Garhwal
+Uttarakhand,Rudra Prayag,Rudraprayag
+Himachal Pradesh,Lahul & Spiti,Lahaul and Spiti
+Jammu and Kashmir,Badgam,Budgam
+Jammu and Kashmir,Bandipore,Bandipora
+Jammu and Kashmir,Shopian,Shopiyan
+Jammu and Kashmir,Poonch,Punch
+Delhi,East,Delhi
+Delhi,West,Delhi
+Delhi,North,Delhi
+Delhi,South,Delhi
+Delhi,Central,Delhi
+Delhi,North East,Delhi
+Delhi,North West,Delhi
+Delhi,South West,Delhi
+Delhi,South East,Delhi
+Delhi,New Delhi,Delhi
+Delhi,Shahdara,Delhi
+Madhya Pradesh,East Nimar,Khandwa,
+Madhya Pradesh,West Nimar,Khargone,
+Madhya Pradesh,Rajnandgaon,Rajnandgaon,Chhattisgarh
+Uttar Pradesh,G.B. Nagar,Gautam Buddha Nagar,
+Uttar Pradesh,Jyotiba Phule Nagar,Amroha,
+Uttar Pradesh,Sant Ravidas Nagar,Bhadohi,
+Punjab,Mukatsar,Sri Muktsar Sahib,
+Punjab,Shri Muktsar Sahib,Sri Muktsar Sahib,
+Karnataka,Coorg,Kodagu,
+Karnataka,Dakshin Kannada,Dakshina Kannada,
+Karnataka,Vijayanagara,Ballari,
+Maharashtra,Mumbai City,Mumbai,
+Maharashtra,Mumbai Suburban,Mumbai,
+Kerala,Trichur,Thrissur,
+Jharkhand,Paschim Singbhum,West Singhbhum,
+Odisha,Baleshwar,Balasore,
+Odisha,Sonapur,Subarnapur,
+Andhra Pradesh,Khammam,Khammam,Telangana
+Telangana,Bhupalpally,Jayashankar Bhupalapally,
+Telangana,Jogulamba(Gadwal),Jogulamba Gadwal,
+Telangana,Medchal,Medchal Malkajgiri,
+Telangana,Sircilla,Rajanna Sircilla,
+Gujarat,Daman,Daman,Dadra and Nagar Haveli and Daman and Diu
+Gujarat,Diu,Diu,Dadra and Nagar Haveli and Daman and Diu
+Gujarat,Dohad,Dahod,
+Chhattisgarh,Dantewada,Dakshin Bastar Dantewada,
+Chhattisgarh,Kanker,Uttar Bastar Kanker,
+Chhattisgarh,Gaurella Pendra Marwahi,Bilaspur,
+West Bengal,East Medinipur,Purba Medinipur,
+West Bengal,West Medinipur,Paschim Medinipur,
