@@ -1,6 +1,6 @@
 import maplibregl from "maplibre-gl";
 import { Chart } from "chart.js/auto";
-import { $, base, colorFor, NO_DATA, SEASON_LABEL, SEASONS, stationsText, wellName, type Levels, type Season, type Station } from "./shared";
+import { $, base, bbox, colorFor, nearText, NO_DATA, SEASON_LABEL, SEASONS, stationsText, wellName, type Levels, type Season, type Station } from "./shared";
 import { districtStats } from "./stats";
 
 const ordinal = (n: number) => {
@@ -9,16 +9,6 @@ const ordinal = (n: number) => {
 };
 const change = (d: number) => `${Math.abs(d).toFixed(2)} m ${d > 0 ? "deeper" : "shallower"}`;
 const rate = (r: number | null) => r == null ? "not enough data" : `${Math.abs(r).toFixed(2)} m/year ${r > 0 ? "deeper" : "shallower"}`;
-
-function bbox(geom: any): [[number, number], [number, number]] {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  const walk = (c: any) => {
-    if (typeof c[0] === "number") { x0 = Math.min(x0, c[0]); y0 = Math.min(y0, c[1]); x1 = Math.max(x1, c[0]); y1 = Math.max(y1, c[1]); }
-    else c.forEach(walk);
-  };
-  walk(geom.coordinates);
-  return [[x0, y0], [x1, y1]];
-}
 
 /** Full-page view of one district: summary stats, a map of its wells, district and well charts. */
 export function createDetailView(gj: any, levels: Levels, onClose: (season: Season, yearIdx: number) => void) {
@@ -104,7 +94,8 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
       return;
     }
     $("p-well-title").textContent = wellName(st);
-    const where = st.place && st.km != null && st.km >= 0.5 ? `${st.km} km from ${st.place} · ` : "";
+    // GeoNames location as the subtitle when the title is the WRIS name, else just its distance
+    const where = st.name ? `${nearText(st)} · ` : st.place && st.km != null && st.km >= 0.5 ? `${st.km} km from ${st.place} · ` : "";
     $("p-well-sub").textContent = `${where}${st.manual ? "read by hand" : "automatic sensor"} · station ${st.id}`;
     wellChart = new Chart($<HTMLCanvasElement>("p-well-chart"), {
       type: "line",
@@ -127,7 +118,7 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
         const v = st[season()][y] ?? null;
         return { type: "Feature", geometry: { type: "Point", coordinates: [st.lon, st.lat] },
                  properties: { id: st.id, has: v != null, color: v == null ? NO_DATA : colorFor(v), manual: st.manual,
-                               label: `${wellName(st)}: ${v == null ? "not measured" : `${v.toFixed(1)} m`}` } };
+                               label: `${wellName(st)}${st.name && st.place ? ` (near ${st.place})` : ""}: ${v == null ? "not measured" : `${v.toFixed(1)} m`}` } };
       }),
     };
   }

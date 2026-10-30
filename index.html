@@ -12,6 +12,12 @@
   <aside id="panel">
     <h1>India groundwater levels</h1>
     <div id="banner" hidden>Placeholder data: district boundaries are real, but the water levels are synthetic, not real readings.</div>
+    <div class="search">
+      <label for="search">Find a district</label>
+      <input id="search" type="search" placeholder="e.g. Ludhiana or Kerala" autocomplete="off" spellcheck="false"
+        role="combobox" aria-controls="search-results" aria-expanded="false" aria-autocomplete="list" />
+      <ul id="search-results" role="listbox" aria-label="Matching districts" hidden></ul>
+    </div>
     <div class="row">
       <label>Season
         <select id="season"><option value="pre">Pre-monsoon</option><option value="post">Post-monsoon</option></select>
