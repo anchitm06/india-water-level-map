@@ -14,4 +14,19 @@ button:hover { border-color:var(--accent); }
 #legend div { display:flex; align-items:center; gap:6px; }
 #legend i { width:18px; height:12px; border-radius:2px; display:inline-block; }
 .hint,.note { color:#7a828b; font-size:12px; }
-@media (max-width:700px) { body { flex-direction:column; } #map { height:55vh; flex:none; } #panel { width:auto; border-left:0; border-top:1px solid var(--line); } }
+.actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+#page { position:fixed; inset:0; z-index:10; overflow:auto; background:var(--bg); padding:16px; }
+#page[hidden] { display:none; }
+.page-head { display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+.page-title { flex:1; min-width:200px; } .page-title h1 { margin:0; } .page-title p { margin:2px 0 0; }
+.stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:12px; }
+.stat { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:2px; }
+.stat span { font-size:12px; color:#7a828b; } .stat strong { font-size:17px; } .stat small { font-size:12px; color:#7a828b; }
+.page-grid { display:grid; grid-template-columns:3fr 2fr; grid-template-rows:auto auto; gap:12px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; min-width:0; }
+.card h2 { margin:0 0 8px; }
+.wells { grid-row:span 2; display:flex; flex-direction:column; }
+#p-map { flex:1; min-height:420px; border-radius:6px; overflow:hidden; }
+.chart-box { position:relative; height:260px; }
+@media (max-width:700px) { body { flex-direction:column; } #map { height:55vh; flex:none; } #panel { width:auto; border-left:0; border-top:1px solid var(--line); }
+  .page-grid { grid-template-columns:1fr; } .wells { grid-row:auto; } #p-map { min-height:320px; } }

@@ -168,6 +168,21 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
 - Real `public/data/levels.json` committed 2026-10-30 (replaces the placeholder; banner hidden).
   Regenerate with `python pipeline/aggregate.py` after any new fetch.
 
+## District detail view (2026-10-30)
+- Full-page view per district at `#district=<id>` (shareable), opened from the panel's "Open
+  detailed view"; Back returns to the map with the season/year chosen there. Code: `src/detail.ts`
+  (page, station map, charts), `src/stats.ts` (trend = least-squares slope, 10-year trend, change vs
+  ~10 years earlier, monsoon recharge = median pre-post of the same year over the last 10 years,
+  rank within the state, deepest/shallowest year), `src/shared.ts` (types, colours).
+- Station map: `aggregate.py` now also writes `public/data/stations/<id>.json` (650 files, 19 MB,
+  largest 160 KB; sparse per-station seasonal values after cleaning), loaded on demand. Wells are
+  coloured by depth for the chosen year (grey = not measured), dark outline = CGWB manual well;
+  click a well for its own chart. Committed, since CI cannot fetch India-WRIS; each regenerate
+  rewrites these files, so the repo grows by up to ~19 MB per data refresh.
+- Checked in headless Edge (desktop and 390 px): direct link, panel button, well click, Back, no
+  horizontal overflow, no console errors (a favicon 404 fixed with an inline icon). Ludhiana:
+  22.1 m pre-monsoon 2026, 0.40 m/year deeper long-term, post-monsoon deeper than pre-monsoon.
+
 ## Next steps
 1. Spot-check a few districts against published CGWB yearbook figures.
 2. (Aliases done, see above.)
