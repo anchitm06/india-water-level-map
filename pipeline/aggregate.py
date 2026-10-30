@@ -40,6 +40,8 @@ JUMP_WINDOW_Y = 5  # nearby = same station within this many years, so trends and
 MIN_HISTORY = 3  # nearby seasons needed to judge; isolated seasons (data gaps) are kept
 LINK_WINDOW_Y = 5  # district_series: how far back a year may look for shared stations
 MIN_PAIRS = 3  # shared stations needed to trust a year-to-year link
+MANUAL_MAX_DAYS = 3  # reading days in a season at or below which a station-season counts as manual
+MANUAL_SHARE = 0.5  # share of a year's stations that must be manual for that year to pin a run
 
 
 def far_from(ref: list[float], k: float, floor: float):
@@ -49,9 +51,23 @@ def far_from(ref: list[float], k: float, floor: float):
     return lambda v: abs(v - med) > limit
 
 
-def station_seasons(readings) -> tuple[dict[tuple[str, int, str], float], Counter]:
-    """(station, YYYY-MM-DD, level) rows -> ({(station, year, season): level}, drop counts).
-    Repeated (station, date) rows, which a fetch interrupted mid-window can leave, count once."""
+def is_lat_lon_code(sid: str) -> bool:
+    """CGWB-style 15-digit station code built from coordinates (283745077141501 = 28 37 45 N,
+    77 14 15 E, well 01)."""
+    return len(sid) == 15 and sid.isdigit()
+
+
+def station_seasons(readings) -> tuple[dict[tuple[str, int, str], float], Counter, set]:
+    """(station, YYYY-MM-DD, level) rows -> ({(station, year, season): level}, drop counts,
+    manual station-season keys). Repeated (station, date) rows, which a fetch interrupted
+    mid-window can leave, count once.
+
+    A station-season is manual if it has at most MANUAL_MAX_DAYS reading days (manual wells are read
+    once a season, telemetric ones daily) and the station has a CGWB-style lat/lon code. Checked
+    Oct 2026: the ID alone is not enough (CGWB and West Bengal telemetric wells use lat/lon codes
+    too), and frequency alone pulls in state networks (~6,000 Rajasthan state wells) that are
+    deeper than CGWB's and made districts jump where runs were pinned to different networks.
+    Judging per season handles a well that switched from manual to telemetric."""
     # Grouped straight into station-seasons, keyed by date inside, so the full file (8.5M rows in
     # Oct 2026) is never held as one flat list and repeated dates count once.
     by_season: dict[tuple[str, int, str], dict[str, float]] = defaultdict(dict)
@@ -62,8 +78,11 @@ def station_seasons(readings) -> tuple[dict[tuple[str, int, str], float], Counte
 
     dropped: Counter = Counter()
     seasonal = {}
+    manual = set()
     while by_season:
         key, days = by_season.popitem()
+        if len(days) <= MANUAL_MAX_DAYS and is_lat_lon_code(key[0]):
+            manual.add(key)
         levels = list(days.values())
         far = far_from(levels, SPIKE_K, SPIKE_FLOOR_M) if len(levels) >= 3 else (lambda v: False)
         bad = {i for i, v in enumerate(levels) if far(v)}
@@ -82,26 +101,23 @@ def station_seasons(readings) -> tuple[dict[tuple[str, int, str], float], Counte
                 jumps.append(key)
     for key in jumps:
         del seasonal[key]
+        manual.discard(key)
     if jumps:
         dropped["station-season jumps"] = len(jumps)
-    return seasonal, dropped
+    return seasonal, dropped, manual
 
 
-def is_manual(sid: str) -> bool:
-    """CGWB's manual well network uses 15-digit lat/lon codes (283745077141501 = 28 37 45 N,
-    77 14 15 E, well 01); telemetric and most state-agency stations do not."""
-    return len(sid) == 15 and sid.isdigit()
-
-
-def district_series(by_year: dict[int, dict[str, float]], years: list[int]) -> tuple[list, list]:
-    """One district and season: {year: {station: level}} -> (levels, mixed) aligned with `years`.
+def district_series(by_year: dict[int, dict[str, float]], years: list[int],
+                    manual: dict[int, set[str]] | None = None) -> tuple[list, list]:
+    """One district and season: {year: {station: level}} and {year: {manually read stations}}
+    -> (levels, mixed) aligned with `years`.
 
     The set of measured wells changes over time (deep telemetric piezometers dominate from 2022),
     so a plain median per year tracks the well mix, not the water table. Instead:
       - trend: each year is linked to the latest earlier year within LINK_WINDOW_Y that shares at
         least MIN_PAIRS stations, by the median change of those shared stations (chain-linking);
-      - level: each chained run is pinned to the median of CGWB manual wells in the run's year
-        with the most of them, the network CGWB's own yearbooks report;
+      - level: each chained run is pinned to the median of manually read wells (mostly CGWB's
+        national network, the one its yearbooks report) in the run's year with the most of them;
       - fallback: with no link the chain restarts. A run with no manual wells continues from the
         previous run's last level if that ended within LINK_WINDOW_Y, else it is pinned to its
         best-covered year's all-station median; both are flagged mixed (1). On the Oct 2026 data
@@ -126,14 +142,19 @@ def district_series(by_year: dict[int, dict[str, float]], years: list[int]) -> t
             rel[y] = 0.0
             runs.append([y])
 
+    manual = manual or {}
     level: dict[int, float] = {}
     mixed: dict[int, int] = {}
     for n, run in enumerate(runs):
-        manual = {y: [v for s, v in by_year[y].items() if is_manual(s)] for y in run}
-        anchor = max(run, key=lambda y: len(manual[y]))
+        hand = {y: [v for s, v in by_year[y].items() if s in manual.get(y, ())] for y in run}
+        # A telemetric well that reported on only a few days looks manual. Three of them among 25
+        # stations pinned Delhi 2023-26 at 2.1 m instead of ~8.5 m, so a year may pin the run only
+        # if its manual wells are both MIN_PAIRS or more and at least MANUAL_SHARE of its stations.
+        ok = [y for y in run if len(hand[y]) >= max(MIN_PAIRS, MANUAL_SHARE * len(by_year[y]))]
         flag = 0
-        if manual[anchor]:
-            offset = statistics.median(manual[anchor]) - rel[anchor]
+        if ok:
+            anchor = max(ok, key=lambda y: len(hand[y]))
+            offset = statistics.median(hand[anchor]) - rel[anchor]
         elif n and run[0] - runs[n - 1][-1] <= LINK_WINDOW_Y:
             # No manual wells (typically a new telemetric network from 2020+) and nothing shared
             # with the run before: continue from that run's last level. That assumes no change over
@@ -172,7 +193,7 @@ def main() -> None:
                 n_rows += 1
                 yield sid, date, float(level)
 
-    seasonal, dropped = station_seasons(readings())
+    seasonal, dropped, manual = station_seasons(readings())
 
     district_of = {}
     for sid, xy in pos.items():
@@ -180,9 +201,12 @@ def main() -> None:
         district_of[sid] = None if hit is None else ids[hit]
 
     groups: dict[tuple[str, str], dict[int, dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
+    hand: dict[tuple[str, str], dict[int, set[str]]] = defaultdict(lambda: defaultdict(set))
     for (sid, year, season), level in seasonal.items():
         if district_of[sid] is not None:
             groups[(district_of[sid], season)][year][sid] = level
+            if (sid, year, season) in manual:
+                hand[(district_of[sid], season)][year].add(sid)
 
     years = sorted({y for g in groups.values() for y in g})
     data = {}
@@ -190,14 +214,14 @@ def main() -> None:
         d: dict = {"stations": {}, "mixed": {}}
         for s in ("pre", "post"):
             by_year = groups.get((did, s), {})
-            d[s], d["mixed"][s] = district_series(by_year, years)
+            d[s], d["mixed"][s] = district_series(by_year, years, hand.get((did, s)))
             d["stations"][s] = [len(by_year.get(y, ())) for y in years]
         data[did] = d
     (ROOT / "public/data/levels.json").write_text(json.dumps({
         "meta": {"placeholder": False, "source": "India-WRIS / CGWB", "unit": "m below ground level",
-                 "method": "chain-linked on stations measured in both years, pinned to CGWB manual wells"},
+                 "method": "chain-linked on stations measured in both years, pinned to manually read wells"},
         "years": years, "data": data}, separators=(",", ":")), encoding="utf-8")
-    n_files = write_station_files(seasonal, district_of, pos)
+    n_files = write_station_files(seasonal, manual, district_of, pos)
 
     outside = sum(1 for d in district_of.values() if d is None)
     print(f"{n_rows} daily readings, {len(pos)} stations ({outside} outside every district), "
@@ -206,11 +230,13 @@ def main() -> None:
           f"district-season values -> public/data/levels.json; {n_files} station files -> public/data/stations/")
 
 
-def write_station_files(seasonal: dict, district_of: dict, pos: dict) -> int:
+def write_station_files(seasonal: dict, manual: set, district_of: dict, pos: dict) -> int:
     """public/data/stations/<district id>.json: the district's cleaned station-season values, for the
     detail view's station map (loaded on demand; ~18 MB in total vs 387 MB of raw readings).
-    Values are sparse, keyed by year: {"id", "lat", "lon", "manual", "pre": {"2015": 6.7}, "post": {...}}."""
+    Values are sparse, keyed by year: {"id", "lat", "lon", "manual", "pre": {"2015": 6.7}, "post": {...}};
+    manual is true when most of the station's seasons were read by hand."""
     by_district: dict[str, dict[str, dict]] = defaultdict(dict)
+    hand_count: Counter = Counter()
     for (sid, year, season), level in seasonal.items():
         did = district_of.get(sid)
         if did is None:
@@ -218,8 +244,12 @@ def write_station_files(seasonal: dict, district_of: dict, pos: dict) -> int:
         st = by_district[did].get(sid)
         if st is None:
             lon, lat = pos[sid]
-            st = by_district[did][sid] = {"id": sid, "lat": lat, "lon": lon, "manual": is_manual(sid), "pre": {}, "post": {}}
+            st = by_district[did][sid] = {"id": sid, "lat": lat, "lon": lon, "manual": False, "pre": {}, "post": {}}
         st[season][str(year)] = round(level, 2)
+        hand_count[sid] += 1 if (sid, year, season) in manual else -1
+    for stations in by_district.values():
+        for sid, st in stations.items():
+            st["manual"] = hand_count[sid] > 0
     out = ROOT / "public/data/stations"
     out.mkdir(exist_ok=True)
     for old in out.glob("*.json"):  # districts can lose all their stations between runs
