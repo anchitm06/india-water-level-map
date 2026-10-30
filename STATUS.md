@@ -207,8 +207,29 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   data: 85% of values unchanged, 848 of 47,173 moved > 5 m (mostly Rajasthan, UP, Tamil Nadu,
   Haryana); 2015 -> 2024 median change 0.30 m (manual-pinned) and 0.27 m (estimated) districts.
 
+## Border check and well place names (2026-10-30)
+- **Border check against the official (Survey of India) depiction**, by reference points, since
+  SoI's boundary GIS data is not openly downloadable: Gilgit, Skardu, Hunza, Khunjerab, Shaksgam,
+  Siachen, Aksai Chin (two points), Demchok -> inside Ladakh; Muzaffarabad, Mirpur, Kotli -> inside
+  J&K; Tawang, Kibithu, Mechuka -> Arunachal; Sir Creek -> Kutch; Barahoti -> Uttarakhand. Extremes
+  37.08 N / 97.39 E match the official map. So the outline follows India's official claims.
+  Differences that remain: internal divisions in the disputed areas (Gilgit-Baltistan sits inside
+  our "Leh" polygon; the official 2019 map shows Gilgit, Gilgit Wazarat, Chilhas and Tribal Territory
+  as separate Ladakh districts), and the boundaries are a simplified mixed-vintage set, not SoI's
+  own data. A formal SoI clearance would still be needed for an official/authoritative claim.
+- **Islands fixed:** the all-India source kept only Minicoy for Lakshadweep and 2-3 islands per
+  Andaman & Nicobar district. `build_districts.py` now takes those territories from the source's
+  per-state files (35 / 105 / 57 / 39 parts, simplified at 0.002 deg). Only those 4 features changed;
+  35 island wells are now placed (1,290 -> 1,255 outside every district).
+- **Well place names:** wells show "Near <place>" instead of a station code. `pipeline/place_names.py`
+  downloads GeoNames IN (CC BY 4.0, attribution on the well map) to `pipeline/raw/geonames/IN.txt`;
+  `aggregate.py` adds `place`/`km` (nearest populated place within 10 km) to station files: 64,175
+  of 64,494 wells named, median 0.8 km away. Hover a well for "Near X: 12.3 m", click for its chart
+  titled by place with the code underneath. India-WRIS's own station names/villages would be
+  better but fetch.py drops them; keeping them needs a re-fetch.
+
 ## Next steps
-1. Merge the corrected data to `main` so the live site picks it up.
+1. Merge to `main` so the live site picks up the islands and well names.
 2. (Aliases done, see above.)
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,

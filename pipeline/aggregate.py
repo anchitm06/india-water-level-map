@@ -234,7 +234,13 @@ def write_station_files(seasonal: dict, manual: set, district_of: dict, pos: dic
     """public/data/stations/<district id>.json: the district's cleaned station-season values, for the
     detail view's station map (loaded on demand; ~18 MB in total vs 387 MB of raw readings).
     Values are sparse, keyed by year: {"id", "lat", "lon", "manual", "pre": {"2015": 6.7}, "post": {...}};
-    manual is true when most of the station's seasons were read by hand."""
+    manual is true when most of the station's seasons were read by hand. With the GeoNames file
+    present (see place_names.py) each station also gets "place" and "km", its nearest named place."""
+    import place_names
+
+    gazetteer = place_names.Gazetteer() if place_names.GEONAMES.exists() else None
+    if gazetteer is None:
+        print(f"no {place_names.GEONAMES}: wells get no place names (run pipeline/place_names.py)")
     by_district: dict[str, dict[str, dict]] = defaultdict(dict)
     hand_count: Counter = Counter()
     for (sid, year, season), level in seasonal.items():
@@ -250,6 +256,9 @@ def write_station_files(seasonal: dict, manual: set, district_of: dict, pos: dic
     for stations in by_district.values():
         for sid, st in stations.items():
             st["manual"] = hand_count[sid] > 0
+            near = gazetteer.nearest(st["lat"], st["lon"]) if gazetteer else None
+            if near:
+                st["place"], st["km"] = near[0], round(near[1], 1)
     out = ROOT / "public/data/stations"
     out.mkdir(exist_ok=True)
     for old in out.glob("*.json"):  # districts can lose all their stations between runs

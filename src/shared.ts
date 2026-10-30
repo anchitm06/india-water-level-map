@@ -12,7 +12,13 @@ export interface Levels {
 export type DistrictSeries = Record<Season, (number | null)[]> & { stations?: Record<Season, number[]>; mixed?: Record<Season, number[]> };
 
 // public/data/stations/<district id>.json, written by pipeline/aggregate.py
-export interface Station { id: string; lat: number; lon: number; manual: boolean; pre: Record<string, number>; post: Record<string, number> }
+// place/km: nearest named place (GeoNames), absent if none within 10 km
+export interface Station {
+  id: string; lat: number; lon: number; manual: boolean; place?: string; km?: number;
+  pre: Record<string, number>; post: Record<string, number>;
+}
+
+export const wellName = (st: Station) => st.place ? `Near ${st.place}` : `Well at ${st.lat.toFixed(3)}° N, ${st.lon.toFixed(3)}° E`;
 
 export const stationsText = (n: number | undefined) => n == null ? "" : ` (${n} station${n === 1 ? "" : "s"})`;
 
