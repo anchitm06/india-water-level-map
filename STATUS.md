@@ -228,8 +228,26 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   titled by place with the code underneath. India-WRIS's own station names/villages would be
   better but fetch.py drops them; keeping them needs a re-fetch.
 
+## WRIS station names and district search (2026-10-31)
+- `pipeline/fetch_names.py` fetched India-WRIS station names without re-downloading readings: per
+  district it queries single days on which the most unnamed wells were read (phase 1, own targets),
+  then neighbouring districts' targets for the rest (phase 2). Full run: 11,131 requests, ~3 h,
+  0 failures, 62,661 of 64,494 site wells (97.2%) have raw WRIS fields in
+  `pipeline/raw/station_names.json` (gitignored). A first run wasted Kutch's tries on 953 wells with
+  bad coordinates; it now hunts only wells in the station files.
+- `aggregate.display_name` cleans them: "district;block;village;site" paths -> "Site, Village",
+  leading state/district words and repeated words dropped, ALL-CAPS words > 3 letters title-cased
+  (acronyms like "DSIIDC" get "Dsiidc"; accepted), codes used as names rejected
+  (`looks_like_code`). 57,331 wells (88.9%) show a WRIS name; the rest fall back to "Near <place>".
+  Detail view: WRIS name as title, GeoNames location as subtitle; hover labels capped at 48 chars.
+- District search box in the side panel (`src/search.ts`): name/state matching, keyboard navigation,
+  zooms to and opens the picked district.
+- Hallmark redesign: not started. nutlope/hallmark could not be added to this session (needs push
+  access); install its skills into ~/.claude/skills and ask in a new session.
+
 ## Next steps
-1. Merge to `main` so the live site picks up the islands and well names.
+1. Merge to `main` so the live site gets the islands, well names and search.
+2. Redesign with the hallmark skills (new session, see above).
 2. (Aliases done, see above.)
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,

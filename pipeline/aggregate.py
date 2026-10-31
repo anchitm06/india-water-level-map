@@ -230,17 +230,61 @@ def main() -> None:
           f"district-season values -> public/data/levels.json; {n_files} station files -> public/data/stations/")
 
 
+def looks_like_code(s: str) -> bool:
+    """A station code used as a name: one token, no lower case, 3+ digits ("W180937076402201",
+    "PIZ10218", "ABHY_KCH_0001")."""
+    s = s.strip()
+    return " " not in s and not any(c.islower() for c in s) and sum(c.isdigit() for c in s) >= 3
+
+
+def display_name(raw: dict, sid: str) -> str | None:
+    """India-WRIS station fields -> a readable well name, or None if WRIS gives nothing useful.
+    Seen formats: "LUDHIANA;DORAHA;PAYAL;GOVT. SR. SCHOOL" (district;block;village;site, shown as
+    "Govt. Sr. School, Payal"), "Delhi East PREET VIHAR Bank Enclave Pz", "gazipur crossing pz"."""
+    name = (raw.get("stationName") or "").strip()
+    junk = {"", "-", "NA", "NULL", sid.upper()}
+    if ";" in name:
+        skip = junk | {(raw.get(k) or "").strip().upper() for k in ("district", "state")}
+        parts = [p.strip() for p in name.split(";") if p.strip().upper() not in skip]
+        name = f"{parts[-1]}, {parts[-2]}" if len(parts) >= 2 else (parts[0] if parts else "")
+    if name.upper() in junk or looks_like_code(name):
+        name = (raw.get("village") or "").strip()
+        if name.upper() in junk or looks_like_code(name):
+            return None
+    name = name.replace("_", " ").strip("*#-_ ")  # "*Manipura", "Jogaldari_Pz"
+    # The page already shows state and district: drop them as leading words ("Punjab Jalandhar
+    # Shahkot Malsian-D Pz" -> "Shahkot Malsian-D Pz"), and words repeated back to back.
+    places = {w for k in ("state", "district") for w in (raw.get(k) or "").upper().split()}
+    words = name.split()
+    lead = 0
+    while lead < len(words) - 1 and words[lead].upper().strip(",") in places:
+        lead += 1
+    words = [w for i, w in enumerate(words[lead:]) if i == 0 or w.upper() != words[lead + i - 1].upper()]
+    name = " ".join(words)
+    if name.islower():
+        return " ".join(w.capitalize() if len(w) > 2 else w for w in name.split())
+    # ALL-CAPS words longer than 3 letters are names (PAYAL) and ones ending in "." abbreviations
+    # (GOVT., SR.); other short ones are often acronyms (DJB, WTP) and stay as they are
+    return " ".join(w.capitalize() if w.isupper() and (sum(c.isalpha() for c in w) > 3 or w.endswith(".")) else w
+                    for w in name.split())
+
+
 def write_station_files(seasonal: dict, manual: set, district_of: dict, pos: dict) -> int:
     """public/data/stations/<district id>.json: the district's cleaned station-season values, for the
     detail view's station map (loaded on demand; ~18 MB in total vs 387 MB of raw readings).
     Values are sparse, keyed by year: {"id", "lat", "lon", "manual", "pre": {"2015": 6.7}, "post": {...}};
-    manual is true when most of the station's seasons were read by hand. With the GeoNames file
-    present (see place_names.py) each station also gets "place" and "km", its nearest named place."""
+    manual is true when most of the station's seasons were read by hand. Optional extras: "name",
+    the India-WRIS station name (pipeline/raw/station_names.json, see fetch_names.py), and "place"
+    and "km", the nearest GeoNames place (pipeline/raw/geonames/IN.txt, see place_names.py)."""
     import place_names
 
     gazetteer = place_names.Gazetteer() if place_names.GEONAMES.exists() else None
     if gazetteer is None:
         print(f"no {place_names.GEONAMES}: wells get no place names (run pipeline/place_names.py)")
+    names_path = ROOT / "pipeline/raw/station_names.json"
+    wris_names = json.loads(names_path.read_text(encoding="utf-8")) if names_path.exists() else {}
+    if not wris_names:
+        print(f"no {names_path}: wells get no WRIS names (run pipeline/fetch_names.py)")
     by_district: dict[str, dict[str, dict]] = defaultdict(dict)
     hand_count: Counter = Counter()
     for (sid, year, season), level in seasonal.items():
@@ -256,6 +300,9 @@ def write_station_files(seasonal: dict, manual: set, district_of: dict, pos: dic
     for stations in by_district.values():
         for sid, st in stations.items():
             st["manual"] = hand_count[sid] > 0
+            name = display_name(wris_names[sid], sid) if sid in wris_names else None
+            if name:
+                st["name"] = name
             near = gazetteer.nearest(st["lat"], st["lon"]) if gazetteer else None
             if near:
                 st["place"], st["km"] = near[0], round(near[1], 1)

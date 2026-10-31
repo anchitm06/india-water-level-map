@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from aggregate import district_series, far_from, station_seasons  # noqa: E402
+from aggregate import display_name, district_series, far_from, station_seasons  # noqa: E402
 
 M1, M2, M3, M4 = "M1", "M2", "M3", "M4"  # manually read wells in the district_series tests
 
@@ -129,6 +129,30 @@ def test_manual_minority_does_not_pin_a_run():
                2023: {**{f"T{i}": 20.0 + i for i in range(22)}, "M7": 1.6, "M8": 2.1, "M9": 6.8}}
     levels, mixed = district_series(by_year, [2020, 2021, 2022, 2023], hand(by_year))
     assert levels == [8.5, 8.7, None, 8.7] and mixed == [0, 0, 0, 1]
+
+
+def test_display_name_formats_seen_in_wris():
+    assert display_name({"stationName": "LUDHIANA;DORAHA;PAYAL;GOVT. SR. SCHOOL", "district": "LUDHIANA"}, "X") == "Govt. Sr. School, Payal"
+    assert display_name({"stationName": "LUDHIANA;LUDHIANA WEST;SUDHAR;KHANDUR;Subsidary Health Centre", "district": "LUDHIANA"}, "X") \
+        == "Subsidary Health Centre, Khandur"
+    assert display_name({"stationName": "Delhi East Mayur vihar Kondli DJB WTP", "state": "Delhi", "district": "EAST"}, "X") \
+        == "Mayur vihar Kondli DJB WTP"
+    assert display_name({"stationName": "Delhi East PREET VIHAR Bank Enclave Pz", "state": "Delhi", "district": "EAST"}, "X") \
+        == "Preet Vihar Bank Enclave Pz"
+    assert display_name({"stationName": "Punjab Jalandhar Shahkot Malsian-D Pz", "state": "Punjab", "district": "JALANDHAR"}, "X") \
+        == "Shahkot Malsian-D Pz"
+    assert display_name({"stationName": "Ludhiana Pakhowal Pakhowal 200m Deep", "district": "LUDHIANA"}, "X") == "Pakhowal 200m Deep"
+    assert display_name({"stationName": "Pratapgarh", "district": "Pratapgarh"}, "X") == "Pratapgarh"  # never empty
+    assert display_name({"stationName": "W180937076402201"}, "X") is None  # a code, not a name
+    assert display_name({"stationName": "W180937076402201", "village": "Kharosa"}, "X") == "Kharosa"
+    assert display_name({"stationName": "Jetprol-NQM"}, "X") == "Jetprol-NQM"
+    assert display_name({"stationName": "*Manipura"}, "X") == "Manipura"
+    assert display_name({"stationName": "Jogaldari_Pz"}, "X") == "Jogaldari Pz"
+    assert display_name({"stationName": "ABHY_KCH_0001"}, "ABHY_KCH_0002") is None
+    assert display_name({"stationName": "gazipur crossing pz"}, "X") == "Gazipur Crossing pz"
+    assert display_name({"stationName": "PIZ10218"}, "PIZ10218") is None  # the code itself is no name
+    assert display_name({"stationName": "-", "village": "KHANDUR"}, "X") == "Khandur"
+    assert display_name({}, "X") is None
 
 
 def test_empty_district():

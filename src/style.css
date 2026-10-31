@@ -14,6 +14,16 @@ button:hover { border-color:var(--accent); }
 #legend div { display:flex; align-items:center; gap:6px; }
 #legend i { width:18px; height:12px; border-radius:2px; display:inline-block; }
 .hint,.note { color:#7a828b; font-size:12px; }
+.search { position:relative; display:flex; flex-direction:column; gap:2px; margin:8px 0; }
+.search label { font-weight:600; }
+#search { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+#search:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+#search-results { position:absolute; top:100%; left:0; right:0; z-index:5; margin:2px 0 0; padding:4px 0; list-style:none;
+  background:var(--card); border:1px solid var(--line); border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.15); max-height:300px; overflow:auto; }
+#search-results li { display:flex; justify-content:space-between; gap:8px; padding:6px 10px; cursor:pointer; }
+#search-results li small { color:#7a828b; }
+#search-results li[aria-selected="true"], #search-results li:hover { background:var(--bg); }
+#search-results li.empty { color:#7a828b; cursor:default; }
 .actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
 #page { position:fixed; inset:0; z-index:10; overflow:auto; background:var(--bg); padding:16px; }
 #page[hidden] { display:none; }

@@ -1,1 +1,1 @@
-{"stations":[{"id":"MNGW2","lat":24.3456,"lon":93.4528,"manual":false,"pre":{"2023":0.64,"2024":0.69,"2025":0.76,"2026":0.81},"post":{"2022":0.18,"2023":0.62,"2024":0.71,"2025":0.81},"place":"Phaiphengmun","km":0.7}]}
+{"stations":[{"id":"MNGW2","lat":24.3456,"lon":93.4528,"manual":false,"pre":{"2023":0.64,"2024":0.69,"2025":0.76,"2026":0.81},"post":{"2022":0.18,"2023":0.62,"2024":0.71,"2025":0.81},"name":"Ningthoukhong (LLI Project WRD Office)","place":"Phaiphengmun","km":0.7}]}

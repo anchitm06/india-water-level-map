@@ -1,8 +1,9 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Chart } from "chart.js/auto";
-import { $, base, CLASSES, colorFor, NO_DATA, stationsText, type Levels, type Season } from "./shared";
+import { $, base, bbox, CLASSES, colorFor, NO_DATA, stationsText, type Levels, type Season } from "./shared";
 import { createDetailView } from "./detail";
+import { createSearch } from "./search";
 
 async function main() {
   const [gj, levels] = await Promise.all([
@@ -115,6 +116,14 @@ async function main() {
     a.href = URL.createObjectURL(new Blob([rows.join("\n")], { type: "text/csv" }));
     a.download = `${selected}.csv`;
     a.click();
+  });
+
+  createSearch(gj, (id) => {
+    const f = gj.features.find((x: any) => x.properties.id === id);
+    selected = id;
+    if (map.isStyleLoaded()) map.setFilter("sel", ["==", ["get", "id"], id]);
+    map.fitBounds(bbox(f.geometry), { padding: 40, maxZoom: 8 });
+    showDetail(id);
   });
 
   // Full-page district view, addressable as #district=<id> so it can be shared.
