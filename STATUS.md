@@ -245,9 +245,22 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
 - Hallmark redesign: not started. nutlope/hallmark could not be added to this session (needs push
   access); install its skills into ~/.claude/skills and ask in a new session.
 
+## Hallmark redesign (2026-10-31)
+- Full redesign at app scope with the Hallmark skill, theme Hedgerow (deep leaf-green ground, cream
+  ink, Prata heads over Manrope, one chartreuse accent). Tokens in `src/tokens.css`, base rules in
+  `src/base.css`, the page in `src/style.css` (the Hallmark stamp at its top records the decisions).
+  All colours come from CSS tokens; `shared.token()` resolves them to rgb for MapLibre and Chart.js.
+  The depth ramp is kept as `--data-1..6`; no data is a grey-green `--data-none`.
+- Map screen: the year is the signature (Prata, 64px) beside Play; the depth scale is one stepped bar;
+  the picked district shows its level as a figure. District view: one lead figure and six ruled
+  figures on a darker band, then the well map beside the district chart; the well chart appears on a
+  click. The open district view is the page itself (map screen hidden, document scrolls).
+- Sweep: sloplint 20 FAIL / 13 REFLEX before, 0 / 0 after (1 finish check answered); every link, field,
+  heading and figure kept. Fresh-context finish review: 8 findings, 7 resolved, 1 partial (spare room
+  in the district view's right column when no well is picked). Before/after: `.hallmark/compare.html`.
+
 ## Next steps
-1. Merge to `main` so the live site gets the islands, well names and search.
-2. Redesign with the hallmark skills (new session, see above).
+1. Merge to `main` so the live site gets the redesign.
 2. (Aliases done, see above.)
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,

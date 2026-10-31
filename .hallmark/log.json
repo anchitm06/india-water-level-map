@@ -1,0 +1,22 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "hedgerow",
+  "axes": "dark/high-contrast-serif/chromatic-green",
+  "nav": "kept: side panel shell, back pill on district view",
+  "footer": "none (app)",
+  "imagery": "the product: choropleth map, well map, line charts",
+  "photos": [],
+  "signature": "the year in Prata beside the map, stepping with Play",
+  "sections": [
+   "map screen: map + side panel (search, season, year figure + Play, stepped depth scale, picked district)",
+   "district view: figure band (lead figure + six ruled), well map, district chart, well chart"
+  ],
+  "waived": [],
+  "prompt": "district map of groundwater depth in India, 1985 to 2026, for the public: find a district, read its trend and its wells",
+  "date": "2026-10-31"
+ }
+]

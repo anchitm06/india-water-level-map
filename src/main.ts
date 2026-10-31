@@ -1,7 +1,7 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Chart } from "chart.js/auto";
-import { $, base, bbox, CLASSES, colorFor, NO_DATA, stationsText, type Levels, type Season } from "./shared";
+import { $, base, bbox, chartTheme, CLASSES, colorFor, loneDot, noData, seriesColor, SEASONS, stationsText, token, type Levels, type Season } from "./shared";
 import { createDetailView } from "./detail";
 import { createSearch } from "./search";
 
@@ -19,29 +19,49 @@ async function main() {
   let selected: string | null = null;
   let chart: Chart | null = null;
 
+  chartTheme(Chart);
+
+  // One stepped bar: each step is labelled by the depth it starts at, "no data" set apart.
   const legend = $("legend");
   let lo = 0;
   for (const [max, c] of CLASSES) {
-    legend.insertAdjacentHTML("beforeend", `<div><i style="background:${c}"></i>${max === Infinity ? `> ${lo}` : `${lo} – ${max}`} m</div>`);
+    legend.insertAdjacentHTML("beforeend", `<div class="step"><i style="background:var(${c})"></i>${max === Infinity ? `${lo}+` : lo}</div>`);
     lo = max;
   }
-  legend.insertAdjacentHTML("beforeend", `<div><i style="background:${NO_DATA}"></i>No data</div>`);
+  legend.insertAdjacentHTML("beforeend", `<div class="none"><i style="background:var(--data-none)"></i>No data</div>`);
+  legend.insertAdjacentHTML("beforeend", `<div class="unit">Metres below ground</div>`);
 
   const valueAt = (id: string) => levels.data[id]?.[seasonEl.value as Season]?.[Number(yearEl.value)] ?? null;
 
   const map = new maplibregl.Map({
     container: "map",
-    style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#eef2f5" } }] },
+    style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": token("--color-paper-2") } }] },
     bounds: [[67, 6], [98, 38]],
     fitBoundsOptions: { padding: 20 },
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+  // Fit once the container has its real size: the constructor's fit can run before layout settles, and
+  // a shared #district= link opens with the map screen hidden (zero size) until Back.
+  // Until the reader moves the map (or search does), it re-fits India whenever its box changes size.
+  let fitted = false, moved = false;
+  const fitIndia = () => {
+    map.resize();
+    if (fitted || !map.getContainer().clientWidth) return;
+    map.fitBounds([[68, 6.5], [97.5, 37.2]], { padding: 24, animate: false });
+    fitted = true;
+  };
+  map.on("movestart", (e) => { if ((e as any).originalEvent) moved = true; });
+  map.on("resize", () => {
+    if (moved || !map.getContainer().clientWidth) return;
+    map.fitBounds([[68, 6.5], [97.5, 37.2]], { padding: 24, animate: false });
+    fitted = true;
+  });
 
   const paint = () => {
     $("year-out").textContent = String(levels.years[Number(yearEl.value)]);
     const expr: unknown[] = ["match", ["get", "id"]];
     for (const f of gj.features) expr.push(f.properties.id, colorFor(valueAt(f.properties.id)));
-    expr.push(NO_DATA);
+    expr.push(noData());
     map.setPaintProperty("fill", "fill-color", expr as maplibregl.ExpressionSpecification);
     if (selected) showDetail(selected);
   };
@@ -54,20 +74,29 @@ async function main() {
     $("d-name").textContent = f.properties.name;
     const v = valueAt(id);
     const n = series.stations?.[seasonEl.value as Season]?.[Number(yearEl.value)];
-    const mixed = series.mixed?.[seasonEl.value as Season]?.[Number(yearEl.value)] ? "; estimated, no manual wells" : "";
-    $("d-sub").textContent = `${f.properties.state} · ${levels.years[Number(yearEl.value)]} ${seasonEl.selectedOptions[0].text}: ${v == null ? "no data" : v.toFixed(1) + " m bgl" + stationsText(n).replace(/\)$/, mixed + ")")}`;
+    const mixed = series.mixed?.[seasonEl.value as Season]?.[Number(yearEl.value)];
+    // The state, then the reading as a figure with what it is: season, year and how many wells
+    const sub = $("d-sub");
+    sub.className = "reading";
+    sub.innerHTML = '<span class="state"></span><span class="figure"></span><span class="what"></span>';
+    const [stateEl, figEl, whatEl] = Array.from(sub.children) as HTMLElement[];
+    stateEl.textContent = f.properties.state;
+    figEl.textContent = v == null ? "No data" : `${v.toFixed(1)} m`;
+    whatEl.textContent = `${v == null ? "" : "below ground, "}${seasonEl.selectedOptions[0].text.toLowerCase()} ${levels.years[Number(yearEl.value)]}${v == null ? "" : stationsText(n)}`;
+    if (v != null && mixed) sub.insertAdjacentHTML("beforeend", '<span class="estimated">Estimated: no manual wells this year.</span>');
     chart?.destroy();
     chart = new Chart($<HTMLCanvasElement>("chart"), {
       type: "line",
       data: {
         labels: levels.years,
-        datasets: (["pre", "post"] as Season[]).map((s) => ({
-          label: s === "pre" ? "Pre-monsoon" : "Post-monsoon", data: series[s], spanGaps: false, pointRadius: 2,
-          borderColor: s === "pre" ? "#d2793a" : "#1f5fa8", tension: 0.2,
+        datasets: SEASONS.map((s) => ({
+          label: s === "pre" ? "Pre-monsoon" : "Post-monsoon", data: series[s], spanGaps: false, pointRadius: loneDot(), pointHoverRadius: 4,
+          borderColor: seriesColor(s), backgroundColor: seriesColor(s), borderWidth: 2, tension: 0.2,
         })),
       },
       options: {
-        scales: { y: { reverse: true, title: { display: true, text: "m below ground" } } },
+        maintainAspectRatio: false,
+        scales: { x: { grid: { display: false } }, y: { reverse: true, grace: "8%", title: { display: true, text: "m below ground" } } },
         plugins: {
           legend: { position: "bottom" },
           tooltip: { callbacks: { afterLabel: (c) => stationsText(series.stations?.[(["pre", "post"] as Season[])[c.datasetIndex]]?.[c.dataIndex]).trim() } },
@@ -77,10 +106,11 @@ async function main() {
   }
 
   map.on("load", () => {
+    fitIndia();
     map.addSource("d", { type: "geojson", data: gj });
-    map.addLayer({ id: "fill", type: "fill", source: "d", paint: { "fill-color": NO_DATA, "fill-opacity": 0.9 } });
-    map.addLayer({ id: "line", type: "line", source: "d", paint: { "line-color": "#ffffff", "line-width": 0.5 } });
-    map.addLayer({ id: "sel", type: "line", source: "d", paint: { "line-color": "#000", "line-width": 2 }, filter: ["==", ["get", "id"], selected ?? ""] });
+    map.addLayer({ id: "fill", type: "fill", source: "d", paint: { "fill-color": noData(), "fill-opacity": 1 } });
+    map.addLayer({ id: "line", type: "line", source: "d", paint: { "line-color": token("--color-paper-2"), "line-width": 0.5 } });
+    map.addLayer({ id: "sel", type: "line", source: "d", paint: { "line-color": token("--color-accent"), "line-width": 2.5 }, filter: ["==", ["get", "id"], selected ?? ""] });
     paint();
     map.on("click", "fill", (e) => {
       selected = e.features![0].properties!.id as string;
@@ -122,6 +152,7 @@ async function main() {
     const f = gj.features.find((x: any) => x.properties.id === id);
     selected = id;
     if (map.isStyleLoaded()) map.setFilter("sel", ["==", ["get", "id"], id]);
+    moved = true; // the reader chose this view; keep it on resize
     map.fitBounds(bbox(f.geometry), { padding: 40, maxZoom: 8 });
     showDetail(id);
   });
@@ -129,6 +160,7 @@ async function main() {
   // Full-page district view, addressable as #district=<id> so it can be shared.
   const detail = createDetailView(gj, levels, (s, yi) => {
     seasonEl.value = s; yearEl.value = String(yi); // keep what the reader chose there
+    requestAnimationFrame(fitIndia); // the map screen is visible again
     if (map.isStyleLoaded()) paint();
   });
   $("open-detail").addEventListener("click", () => { if (selected) location.hash = `district=${selected}`; });

@@ -1,6 +1,6 @@
 import maplibregl from "maplibre-gl";
 import { Chart } from "chart.js/auto";
-import { $, base, bbox, colorFor, nearText, NO_DATA, SEASON_LABEL, SEASONS, stationsText, wellName, type Levels, type Season, type Station } from "./shared";
+import { $, base, bbox, colorFor, loneDot, nearText, noData, SEASON_LABEL, SEASONS, seriesColor, stationsText, token, wellName, type Levels, type Season, type Station } from "./shared";
 import { districtStats } from "./stats";
 
 const ordinal = (n: number) => {
@@ -19,6 +19,7 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
   const cache = new Map<string, Promise<Station[]>>();
   const pageTitle = document.title;
   let map: maplibregl.Map | null = null;
+  let wellsMoved = false;
   let charts: Chart[] = [];
   let wellChart: Chart | null = null;
   let current: { id: string; feature: any; stations: Station[] } | null = null;
@@ -40,55 +41,64 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
     const s = districtStats(levels, series, feature.properties.state, stateOf, season(), yearIdx());
     const y = levels.years[yearIdx()], v = series[season()][yearIdx()];
     const n = series.stations?.[season()][yearIdx()];
-    const est = series.mixed?.[season()][yearIdx()] ? " · estimated, no manual wells" : "";
-    const cards: [string, string, string?][] = [
-      [`${SEASON_LABEL[season()]} ${y}`, v == null ? "no data" : `${v.toFixed(1)} m`, v == null ? "" : `below ground${stationsText(n)}${est}`],
+    const est = series.mixed?.[season()][yearIdx()] ? ". Estimated: no manual wells this year" : "";
+    // The level leads as a figure; the other six sit in ruled columns beside it (a <dl>)
+    const lead: [string, string, string] = [`${SEASON_LABEL[season()]} ${y}`, v == null ? "No data" : `${v.toFixed(1)} m`,
+      v == null ? "" : `below ground${stationsText(n)}${est}`];
+    const figures: [string, string, string?][] = [
       ["Long-term trend", rate(s.trend), `${SEASON_LABEL[season()].toLowerCase()}, whole record`],
-      ["Last 10 years", rate(s.trend10), `${levels.years[Math.max(0, yearIdx() - 9)]}–${y}`],
+      ["Last 10 years", rate(s.trend10), `${levels.years[Math.max(0, yearIdx() - 9)]} to ${y}`],
       [s.change10 ? `Change since ${s.change10.from}` : "Change over 10 years", s.change10 ? change(s.change10.delta) : "not enough data"],
       ["Monsoon recharge", s.recharge == null ? "not enough data" : `${s.recharge >= 0 ? "rises" : "falls"} ${Math.abs(s.recharge).toFixed(1)} m`,
         s.recharge != null && s.recharge < 0 ? "post-monsoon deeper than pre-monsoon (typical, last 10 years)" : "typical pre- to post-monsoon change, last 10 years"],
       [`Rank in ${feature.properties.state}`, !s.rank ? "no data" : s.rank.of < 2 ? "only district with data" : `${ordinal(s.rank.rank)} deepest of ${s.rank.of}`,
         s.rank ? `${SEASON_LABEL[season()].toLowerCase()} ${y}` : ""],
-      ["Deepest / shallowest", s.extremes ? `${s.extremes.deepest[1].toFixed(1)} / ${s.extremes.shallowest[1].toFixed(1)} m` : "no data",
-        s.extremes ? `in ${s.extremes.deepest[0]} / ${s.extremes.shallowest[0]}` : ""],
+      ["Deepest and shallowest", s.extremes ? `${s.extremes.deepest[1].toFixed(1)} and ${s.extremes.shallowest[1].toFixed(1)} m` : "no data",
+        s.extremes ? `in ${s.extremes.deepest[0]} and ${s.extremes.shallowest[0]}` : ""],
     ];
-    const box = $("p-stats");
-    box.replaceChildren(...cards.map(([title, value, sub]) => {
+    const leadEl = document.createElement("div");
+    leadEl.className = "lead";
+    leadEl.innerHTML = '<span class="label"></span><span class="figure"></span><span class="sub"></span>';
+    lead.forEach((t, i) => { leadEl.children[i].textContent = t; });
+    const dl = document.createElement("dl");
+    for (const [title, value, sub] of figures) {
       const d = document.createElement("div");
-      d.className = "stat";
-      d.innerHTML = "<span></span><strong></strong><small></small>";
-      d.children[0].textContent = title; d.children[1].textContent = value; d.children[2].textContent = sub ?? "";
-      return d;
-    }));
+      d.innerHTML = "<dt></dt><dd></dd>";
+      d.children[0].textContent = title;
+      d.children[1].textContent = value;
+      if (sub) d.children[1].insertAdjacentHTML("beforeend", "<small></small>"), (d.children[1].lastElementChild as HTMLElement).textContent = sub;
+      dl.append(d);
+    }
+    $("p-stats").replaceChildren(leadEl, dl);
   }
+
+  const lineSet = (s: Season, data: (number | null)[], spanGaps: boolean) => ({
+    label: SEASON_LABEL[s], data, spanGaps, pointRadius: spanGaps ? 0 : loneDot(), pointHoverRadius: 4,
+    borderColor: seriesColor(s), backgroundColor: seriesColor(s), borderWidth: 2, tension: 0.2,
+  });
+  const lineOptions = (extra: any = {}) => ({
+    maintainAspectRatio: false,
+    scales: { x: { grid: { display: false } }, y: { reverse: true, grace: "8%", title: { display: true, text: "m below ground" } } },
+    plugins: { legend: { position: "bottom" as const }, ...extra },
+  });
 
   function renderDistrictChart() {
     const series = levels.data[current!.id];
     charts.forEach((c) => c.destroy());
     charts = [new Chart($<HTMLCanvasElement>("p-chart"), {
       type: "line",
-      data: {
-        labels: levels.years,
-        datasets: SEASONS.map((s) => ({
-          label: SEASON_LABEL[s], data: series[s], spanGaps: false, pointRadius: 2,
-          borderColor: s === "pre" ? "#d2793a" : "#1f5fa8", tension: 0.2,
-        })),
-      },
-      options: {
-        maintainAspectRatio: false,
-        scales: { y: { reverse: true, title: { display: true, text: "m below ground" } } },
-        plugins: {
-          legend: { position: "bottom" },
-          tooltip: { callbacks: { afterLabel: (c) => stationsText(series.stations?.[SEASONS[c.datasetIndex]][c.dataIndex]).trim() } },
-        },
-      },
+      data: { labels: levels.years, datasets: SEASONS.map((s) => lineSet(s, series[s], false)) },
+      options: lineOptions({
+        tooltip: { callbacks: { afterLabel: (c: any) => stationsText(series.stations?.[SEASONS[c.datasetIndex]][c.dataIndex]).trim() } },
+      }),
     })];
   }
 
   function showWell(st: Station | null) {
     wellChart?.destroy();
     wellChart = null;
+    $("p-well-box").hidden = !st; // no empty chart frame before a well is picked
+    $("p-well-title").classList.toggle("empty", !st); // the prompt reads as a hint, not a heading
     if (!st) {
       $("p-well-title").textContent = "Click a well on the map to see its history";
       $("p-well-sub").textContent = "";
@@ -96,18 +106,12 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
     }
     $("p-well-title").textContent = wellName(st);
     // GeoNames location as the subtitle when the title is the WRIS name, else just its distance
-    const where = st.name ? `${nearText(st)} · ` : st.place && st.km != null && st.km >= 0.5 ? `${st.km} km from ${st.place} · ` : "";
-    $("p-well-sub").textContent = `${where}${st.manual ? "read by hand" : "automatic sensor"} · station ${st.id}`;
+    const where = st.name ? `${nearText(st)}. ` : st.place && st.km != null && st.km >= 0.5 ? `${st.km} km from ${st.place}. ` : "";
+    $("p-well-sub").textContent = `${where}${st.manual ? "Read by hand" : "Automatic sensor"}, station ${st.id}.`;
     wellChart = new Chart($<HTMLCanvasElement>("p-well-chart"), {
       type: "line",
-      data: {
-        labels: levels.years,
-        datasets: SEASONS.map((s) => ({
-          label: SEASON_LABEL[s], data: levels.years.map((y) => st[s][String(y)] ?? null), spanGaps: true, pointRadius: 2,
-          borderColor: s === "pre" ? "#d2793a" : "#1f5fa8", tension: 0.2,
-        })),
-      },
-      options: { maintainAspectRatio: false, scales: { y: { reverse: true, title: { display: true, text: "m below ground" } } }, plugins: { legend: { position: "bottom" } } },
+      data: { labels: levels.years, datasets: SEASONS.map((s) => lineSet(s, levels.years.map((y) => st[s][String(y)] ?? null), true)) },
+      options: lineOptions(),
     });
   }
 
@@ -118,7 +122,7 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
       features: current!.stations.map((st) => {
         const v = st[season()][y] ?? null;
         return { type: "Feature", geometry: { type: "Point", coordinates: [st.lon, st.lat] },
-                 properties: { id: st.id, has: v != null, color: v == null ? NO_DATA : colorFor(v), manual: st.manual,
+                 properties: { id: st.id, has: v != null, color: v == null ? noData() : colorFor(v), manual: st.manual,
                                label: `${short(wellName(st))}${st.name && st.place ? ` (near ${st.place})` : ""}: ${v == null ? "not measured" : `${v.toFixed(1)} m`}` } };
       }),
     };
@@ -128,7 +132,7 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
     const { feature, stations } = current!;
     const measured = stations.filter((st) => st[season()][String(levels.years[yearIdx()])] != null).length;
     $("p-map-note").textContent = stations.length
-      ? `${stations.length} wells on record, ${measured} measured in ${SEASON_LABEL[season()].toLowerCase()} ${levels.years[yearIdx()]} (coloured by depth; grey = not measured that year). Dark outline = well read by hand. Hover a well for its location, click for its history.`
+      ? `${stations.length} wells on record, ${measured} measured in ${SEASON_LABEL[season()].toLowerCase()} ${levels.years[yearIdx()]}. Colour is depth; small grey dots were not measured that year; a cream ring marks a well read by hand. Hover a well for its location, click for its history.`
       : "No well data for this district.";
     const district = { type: "FeatureCollection", features: [feature] };
     const apply = () => {
@@ -138,22 +142,27 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
     if (!map) {
       map = new maplibregl.Map({
         container: "p-map",
-        style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#eef2f5" } }] },
+        style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": token("--color-paper-2") } }] },
         bounds: bbox(feature.geometry), fitBoundsOptions: { padding: 24 },
         attributionControl: { customAttribution: 'Place names: <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0)' },
       });
       const hover = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+      // Re-fit the district when the box resizes (a rotated phone, a resized window) unless the reader moved it
+      map.on("movestart", (e) => { if ((e as any).originalEvent) wellsMoved = true; });
+      map.on("resize", () => { if (!wellsMoved && current) map!.fitBounds(bbox(current.feature.geometry), { padding: 24, animate: false }); });
       map.on("load", () => {
         map!.addSource("district", { type: "geojson", data: district as any });
         map!.addSource("wells", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-        map!.addLayer({ id: "d-fill", type: "fill", source: "district", paint: { "fill-color": "#ffffff", "fill-opacity": 0.6 } });
-        map!.addLayer({ id: "d-line", type: "line", source: "district", paint: { "line-color": "#1b1f24", "line-width": 1.5 } });
+        map!.addLayer({ id: "d-fill", type: "fill", source: "district", paint: { "fill-color": token("--color-paper"), "fill-opacity": 1 } });
+        map!.addLayer({ id: "d-line", type: "line", source: "district", paint: { "line-color": token("--color-ink-2"), "line-width": 1.2 } });
         map!.addLayer({
           id: "wells", type: "circle", source: "wells",
           paint: {
+            // measured wells in their depth colour, a cream ring on the hand-read ones; unmeasured ones a quiet grey dot
             "circle-color": ["get", "color"], "circle-radius": ["case", ["get", "has"], 5.5, 3],
-            "circle-stroke-color": ["case", ["get", "manual"], "#1b1f24", "#ffffff"], "circle-stroke-width": 1,
+            "circle-stroke-color": ["case", ["all", ["get", "has"], ["get", "manual"]], token("--color-ink"), token("--color-paper-2")],
+            "circle-stroke-width": ["case", ["all", ["get", "has"], ["get", "manual"]], 2, ["get", "has"], 1, 0],
           },
         });
         map!.on("click", "wells", (e) => showWell(current!.stations.find((s) => s.id === e.features![0].properties!.id) ?? null));
@@ -166,6 +175,7 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
         apply();
       });
     } else {
+      wellsMoved = false;
       map.resize();
       map.fitBounds(bbox(feature.geometry), { padding: 24, animate: false });
       if (map.isStyleLoaded()) apply(); else map.once("load", apply);
@@ -183,9 +193,10 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
       if (!feature || !levels.data[id]) return;
       seasonEl.value = s; yearEl.value = String(yi);
       $("p-name").textContent = feature.properties.name;
-      $("p-sub").textContent = `${feature.properties.state} · district ${id}`;
+      $("p-sub").textContent = `${feature.properties.state}, district ${id}`;
       $("page").hidden = false;
-      document.title = `${feature.properties.name} · ${pageTitle}`;
+      window.scrollTo(0, 0); // the view replaces the map screen, which may have been scrolled on a phone
+      document.title = `${feature.properties.name}: ${pageTitle}`;
       current = { id, feature, stations: [] };
       renderStats(); renderDistrictChart(); showWell(null);
       const stations = await loadStations(id);
