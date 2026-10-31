@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How to use: India Groundwater Levels</title>
+  <meta name="description" content="A short guide to the India groundwater map: reading the colours, moving through the years, finding a district, and exploring its monitoring wells." />
+  <!--SHARED-HEAD-->
+  <link rel="stylesheet" href="./src/page.css" />
+</head>
+<body>
+  <header class="site-head"><div class="container"><a class="brand" href="./">India groundwater levels</a><!--SITE-NAV--></div></header>
+  <main class="prose">
+    <header>
+      <h1>How to use this map</h1>
+      <p class="lead">The map shows how far below the ground the water table sits in each Indian district, every year since 1985, before and after the monsoon. Here is how to read it and dig into any district.</p>
+    </header>
+
+    <nav class="toc" aria-label="On this page">
+      <h2>On this page</h2>
+      <ol>
+        <li><a href="#read">Read the map</a></li>
+        <li><a href="#time">Season and year</a></li>
+        <li><a href="#find">Find a district</a></li>
+        <li><a href="#panel">The district panel</a></li>
+        <li><a href="#detail">The district page</a></li>
+        <li><a href="#wells">Monitoring wells</a></li>
+        <li><a href="#share">Share and download</a></li>
+        <li><a href="#tips">Tips</a></li>
+      </ol>
+    </nav>
+
+    <div class="body">
+      <section id="read" aria-labelledby="h-read">
+        <h2 id="h-read">Read the map</h2>
+        <figure>
+          <img src="/img/guide-map.jpg" width="1200" height="750" loading="lazy" alt="The map of India with districts coloured from pale blue to dark rust, and the side panel with the season, year and depth scale." />
+          <figcaption>The map screen: districts on the left, controls and the depth scale in the side panel.</figcaption>
+        </figure>
+        <p>Each district is coloured by its <strong>depth to water</strong>, in metres below ground level, for the season and year shown in the panel.</p>
+        <ul class="swatches" aria-label="Depth bands">
+          <li><i style="background:#e6f2f7"></i>under 2 m</li>
+          <li><i style="background:#b3d7e6"></i>2 to 5 m</li>
+          <li><i style="background:#7eb7d4"></i>5 to 10 m</li>
+          <li><i style="background:#e9c269"></i>10 to 20 m</li>
+          <li><i style="background:#d2793a"></i>20 to 40 m</li>
+          <li><i style="background:#8c2d1a"></i>40 m and deeper</li>
+          <li><i style="background:#d0cdc9"></i>no data</li>
+        </ul>
+        <p><strong>Blue is shallow, rust is deep.</strong> A deeper water table means wells and pumps must reach further down, so darker, redder districts are generally under more stress. Grey means there were no usable readings for that district in that season and year.</p>
+        <p>On a computer, hover over a district to see its name and value. Scroll or pinch to zoom, drag to pan.</p>
+      </section>
+
+      <section id="time" aria-labelledby="h-time">
+        <h2 id="h-time">Season and year</h2>
+        <ul>
+          <li><strong>Season</strong>: <em>Pre-monsoon</em> (March to May) shows the water table at its lowest, before the rains. <em>Post-monsoon</em> (October to December) shows it after the rains have recharged it. Comparing the two shows how much the monsoon refills a district.</li>
+          <li><strong>Year</strong>: drag the slider, or click it and use the arrow keys, to move from 1985 to 2026. The large number shows the year on the map.</li>
+          <li><strong>Play</strong> steps through every year to animate change over four decades. Press <strong>Pause</strong> to stop on a year.</li>
+        </ul>
+      </section>
+
+      <section id="find" aria-labelledby="h-find">
+        <h2 id="h-find">Find a district</h2>
+        <p>Type a district or state name in <strong>Find a district</strong> (for example "Ludhiana" or "Kerala"). Pick a result with the mouse, or with the arrow keys and Enter. The map zooms to the district and opens its panel.</p>
+        <p>You can also simply click any district on the map.</p>
+      </section>
+
+      <section id="panel" aria-labelledby="h-panel">
+        <h2 id="h-panel">The district panel</h2>
+        <figure class="narrow">
+          <img src="/img/guide-panel.jpg" width="400" height="440" loading="lazy" alt="The side panel for a district, showing its depth for the chosen year as a large figure and a line chart of pre- and post-monsoon depth by year." />
+          <figcaption>The panel for a selected district.</figcaption>
+        </figure>
+        <ul>
+          <li>The large figure is the district's depth for the chosen season and year, with the number of wells behind it.</li>
+          <li>The chart shows the whole record: one line for pre-monsoon, one for post-monsoon. <strong>The depth axis is upside down</strong>, so a line going down means the water table is falling (getting deeper). Gaps are years with no data.</li>
+          <li>Hover the chart to see each year's value and well count.</li>
+          <li>"<strong>Estimated: no manual wells this year</strong>" means the value could not be anchored to CGWB's hand-measured wells and was carried on from nearby years. Treat these with more caution. <a href="./about.html#districts">Why?</a></li>
+        </ul>
+      </section>
+
+      <section id="detail" aria-labelledby="h-detail">
+        <h2 id="h-detail">The district page</h2>
+        <p>Click <strong>Open detailed view</strong> in the panel for a full page about the district.</p>
+        <figure>
+          <img src="/img/guide-detail.jpg" width="1200" height="750" loading="lazy" alt="The district page, with a band of summary figures, a map of the district's monitoring wells and the district chart." />
+          <figcaption>The district page: summary figures, the well map and the district's chart.</figcaption>
+        </figure>
+        <ul>
+          <li>Change the <strong>season</strong> and <strong>year</strong> at the top; all figures and the well map follow.</li>
+          <li>The figures show the long-term and 10-year trends (metres per year deeper or shallower), the change over ten years, how much the monsoon typically raises the water, the district's rank in its state (1st = deepest) and its deepest and shallowest years. <a href="./about.html#presentation">How each is calculated.</a></li>
+          <li><strong>Back to map</strong> returns to the map, keeping the season and year you chose.</li>
+        </ul>
+      </section>
+
+      <section id="wells" aria-labelledby="h-wells">
+        <h2 id="h-wells">Monitoring wells</h2>
+        <p>The well map on the district page shows every monitoring well on record in the district.</p>
+        <ul>
+          <li>A <strong>coloured dot</strong> is a well measured in the chosen season and year, in the same colours as the main map.</li>
+          <li>A <strong>small grey dot</strong> is a well that was not measured that year.</li>
+          <li>A <strong>dark ring</strong> marks a well read by hand (CGWB's manual network); the others are automatic sensors or state wells.</li>
+          <li><strong>Hover</strong> a well for its name and depth; <strong>click</strong> it (or tap on a phone) to see its own history chart beside the map.</li>
+        </ul>
+      </section>
+
+      <section id="share" aria-labelledby="h-share">
+        <h2 id="h-share">Share and download</h2>
+        <ul>
+          <li>Each district page has its own address (ending in <code>#district=…</code>). Copy it from the address bar to share a district directly.</li>
+          <li><strong>Download CSV</strong> in the district panel saves the district's yearly pre- and post-monsoon depths and well counts, ready for a spreadsheet.</li>
+        </ul>
+      </section>
+
+      <section id="tips" aria-labelledby="h-tips">
+        <h2 id="h-tips">Tips</h2>
+        <ul>
+          <li>On a phone, the map sits above the panel: scroll down for the controls and the chart.</li>
+          <li>Recent years have many more wells (automatic sensors added from about 2020), but those are not always comparable with older ones. The district values account for this; individual wells do not.</li>
+          <li>Pre-monsoon 2020 has very few readings because of the COVID-19 lockdown.</li>
+          <li>This is an unofficial visualisation of public India-WRIS data. <a href="./about.html">Read how it was made and its limitations.</a></li>
+        </ul>
+        <a class="cta" href="./">Open the map</a>
+      </section>
+    </div>
+  </main>
+  <footer class="site-foot"><div class="container"><span>Data: India-WRIS / CGWB and state groundwater agencies. Place names: GeoNames (CC BY 4.0).</span><span>Unofficial visualisation.</span></div></footer>
+  <script type="module" src="./src/page.ts"></script>
+</body>
+</html>

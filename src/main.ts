@@ -1,9 +1,9 @@
 import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
-import { Chart } from "chart.js/auto";
-import { $, base, bbox, chartTheme, CLASSES, colorFor, loneDot, noData, seriesColor, SEASONS, stationsText, token, type Levels, type Season } from "./shared";
-import { createDetailView } from "./detail";
+import { $, base, bbox, CLASSES, colorFor, loadStations, noData, SEASONS, stationsText, token, type Levels, type Season } from "./shared";
 import { createSearch } from "./search";
+
+// Chart.js and the district view load on first use, so the map's first paint does not wait for them.
+const loadCharts = () => import("./charts");
 
 async function main() {
   const [gj, levels] = await Promise.all([
@@ -17,9 +17,7 @@ async function main() {
   yearEl.min = "0"; yearEl.max = String(levels.years.length - 1); yearEl.value = yearEl.max;
   const seasonEl = $<HTMLSelectElement>("season");
   let selected: string | null = null;
-  let chart: Chart | null = null;
-
-  chartTheme(Chart);
+  let chart: { destroy(): void } | null = null;
 
   // One stepped bar: each step is labelled by the depth it starts at, "no data" set apart.
   const legend = $("legend");
@@ -31,11 +29,12 @@ async function main() {
   legend.insertAdjacentHTML("beforeend", `<div class="none"><i style="background:var(--data-none)"></i>No data</div>`);
   legend.insertAdjacentHTML("beforeend", `<div class="unit">Metres below ground</div>`);
 
+  let hoverId: string | null = null; // district under the mouse; reset on repaint so its popup text updates
   const valueAt = (id: string) => levels.data[id]?.[seasonEl.value as Season]?.[Number(yearEl.value)] ?? null;
 
   const map = new maplibregl.Map({
     container: "map",
-    style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": token("--color-paper-2") } }] },
+    style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": token("--map-ground") } }] },
     bounds: [[67, 6], [98, 38]],
     fitBoundsOptions: { padding: 20 },
   });
@@ -57,19 +56,31 @@ async function main() {
     fitted = true;
   });
 
+  // One fill expression per season and year, built on first use and reused (Play and the slider revisit them).
+  const exprCache = new Map<string, maplibregl.ExpressionSpecification>();
+  const fillExpr = () => {
+    const key = `${seasonEl.value}|${yearEl.value}`;
+    let expr = exprCache.get(key);
+    if (!expr) {
+      const e: unknown[] = ["match", ["get", "id"]];
+      for (const f of gj.features) e.push(f.properties.id, colorFor(valueAt(f.properties.id)));
+      e.push(noData());
+      exprCache.set(key, (expr = e as maplibregl.ExpressionSpecification));
+    }
+    return expr;
+  };
   const paint = () => {
+    hoverId = null;
     $("year-out").textContent = String(levels.years[Number(yearEl.value)]);
-    const expr: unknown[] = ["match", ["get", "id"]];
-    for (const f of gj.features) expr.push(f.properties.id, colorFor(valueAt(f.properties.id)));
-    expr.push(noData());
-    map.setPaintProperty("fill", "fill-color", expr as maplibregl.ExpressionSpecification);
+    map.setPaintProperty("fill", "fill-color", fillExpr());
     if (selected) showDetail(selected);
   };
 
-  function showDetail(id: string) {
+  async function showDetail(id: string) {
     const f = gj.features.find((x: any) => x.properties.id === id);
     const series = levels.data[id];
     if (!f || !series) return;
+    loadStations(id); // warm the cache so "Open detailed view" shows the wells at once
     $("detail").hidden = true; $("hint").hidden = true; $("detail").hidden = false;
     $("d-name").textContent = f.properties.name;
     const v = valueAt(id);
@@ -84,24 +95,13 @@ async function main() {
     figEl.textContent = v == null ? "No data" : `${v.toFixed(1)} m`;
     whatEl.textContent = `${v == null ? "" : "below ground, "}${seasonEl.selectedOptions[0].text.toLowerCase()} ${levels.years[Number(yearEl.value)]}${v == null ? "" : stationsText(n)}`;
     if (v != null && mixed) sub.insertAdjacentHTML("beforeend", '<span class="estimated">Estimated: no manual wells this year.</span>');
+    const { Chart, lineOptions, lineSet, stationsTooltip } = await loadCharts();
+    if (selected !== id) return; // another district was picked while Chart.js loaded
     chart?.destroy();
     chart = new Chart($<HTMLCanvasElement>("chart"), {
       type: "line",
-      data: {
-        labels: levels.years,
-        datasets: SEASONS.map((s) => ({
-          label: s === "pre" ? "Pre-monsoon" : "Post-monsoon", data: series[s], spanGaps: false, pointRadius: loneDot(), pointHoverRadius: 4,
-          borderColor: seriesColor(s), backgroundColor: seriesColor(s), borderWidth: 2, tension: 0.2,
-        })),
-      },
-      options: {
-        maintainAspectRatio: false,
-        scales: { x: { grid: { display: false } }, y: { reverse: true, grace: "8%", title: { display: true, text: "m below ground" } } },
-        plugins: {
-          legend: { position: "bottom" },
-          tooltip: { callbacks: { afterLabel: (c) => stationsText(series.stations?.[(["pre", "post"] as Season[])[c.datasetIndex]]?.[c.dataIndex]).trim() } },
-        },
-      },
+      data: { labels: levels.years, datasets: SEASONS.map((s) => lineSet(s, series[s], false)) },
+      options: lineOptions(stationsTooltip(series.stations, SEASONS)),
     });
   }
 
@@ -109,16 +109,35 @@ async function main() {
     fitIndia();
     map.addSource("d", { type: "geojson", data: gj });
     map.addLayer({ id: "fill", type: "fill", source: "d", paint: { "fill-color": noData(), "fill-opacity": 1 } });
-    map.addLayer({ id: "line", type: "line", source: "d", paint: { "line-color": token("--color-paper-2"), "line-width": 0.5 } });
-    map.addLayer({ id: "sel", type: "line", source: "d", paint: { "line-color": token("--color-accent"), "line-width": 2.5 }, filter: ["==", ["get", "id"], selected ?? ""] });
+    map.addLayer({ id: "line", type: "line", source: "d", paint: { "line-color": token("--map-line"), "line-width": 0.4 } });
+    map.addLayer({ id: "sel", type: "line", source: "d", paint: { "line-color": token("--color-ink"), "line-width": 2.5 }, filter: ["==", ["get", "id"], selected ?? ""] });
     paint();
     map.on("click", "fill", (e) => {
       selected = e.features![0].properties!.id as string;
       map.setFilter("sel", ["==", ["get", "id"], selected]);
       showDetail(selected);
     });
-    map.on("mouseenter", "fill", () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", "fill", () => (map.getCanvas().style.cursor = ""));
+    // Hover (mouse only): the district's name, state and value for the season and year on show
+    const hover = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: "district-pop" });
+    map.on("mousemove", "fill", (e) => {
+      map.getCanvas().style.cursor = "pointer";
+      const p = e.features![0].properties!;
+      if (p.id !== hoverId) {
+        hoverId = p.id;
+        const v = valueAt(p.id);
+        const el = document.createElement("div");
+        el.innerHTML = "<strong></strong><span class=\"pop-sub\"></span><span></span>";
+        el.children[0].textContent = p.name;
+        el.children[1].textContent = p.state;
+        el.children[2].textContent = v == null ? "No data" : `${v.toFixed(1)} m below ground`;
+        hover.setDOMContent(el);
+      }
+      hover.setLngLat(e.lngLat).addTo(map);
+    });
+    map.on("mouseleave", "fill", () => { map.getCanvas().style.cursor = ""; hover.remove(); hoverId = null; });
+    // Once the map is up, fetch the chart and district-view code in the background so the first click is instant.
+    const idle = (window as any).requestIdleCallback ?? ((f: () => void) => setTimeout(f, 1500));
+    idle(() => { loadCharts(); import("./detail"); });
   });
 
   yearEl.addEventListener("input", () => map.isStyleLoaded() && paint());
@@ -158,19 +177,20 @@ async function main() {
   });
 
   // Full-page district view, addressable as #district=<id> so it can be shared.
-  const detail = createDetailView(gj, levels, (s, yi) => {
+  let detailP: Promise<{ open(id: string, s: Season, yi: number): void; close(): void }> | null = null;
+  const detail = () => (detailP ??= import("./detail").then((m) => m.createDetailView(gj, levels, (s, yi) => {
     seasonEl.value = s; yearEl.value = String(yi); // keep what the reader chose there
     requestAnimationFrame(fitIndia); // the map screen is visible again
     if (map.isStyleLoaded()) paint();
-  });
+  })));
   $("open-detail").addEventListener("click", () => { if (selected) location.hash = `district=${selected}`; });
   const route = () => {
     const id = location.hash.match(/district=([\w-]+)/)?.[1];
     if (id && levels.data[id]) {
       selected = id;
       if (map.isStyleLoaded()) map.setFilter("sel", ["==", ["get", "id"], id]);
-      detail.open(id, seasonEl.value as Season, Number(yearEl.value));
-    } else detail.close();
+      detail().then((d) => d.open(id, seasonEl.value as Season, Number(yearEl.value)));
+    } else detailP?.then((d) => d.close());
   };
   window.addEventListener("hashchange", route);
   route();

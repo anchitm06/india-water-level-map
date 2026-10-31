@@ -1,9 +1,7 @@
-/* Hallmark · shape: app screen · genre: editorial · theme: Hedgerow (deal 1/3, seed district-map-groundwater-depth-e418·4a4aafa2·2026-10-31·r0) · redesign: full
- * nav: kept, the side panel is the shell; a back pill on the district view · signature: the year in Prata beside the map, stepping with Play · states: no district picked, no wells, no well picked · hedgerow: hedge
- * axes: dark/high-contrast-serif/chromatic-green · posture: drenched · contrast: pass · v2.0.0 */
-/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: H, seven equal stat boxes led the district view; now one figure leads and six sit in ruled columns */
-/* Hallmark · finish-review: subagent, fix, 8 findings, 7 resolved 1 partial (6: the right column still has room under the well hint) · gap: none */
-/* Hallmark · answered F4 · the second fill is MapLibre's attribution toggle, an icon button given a cream ground so its dark glyph shows on the green map */
+/* Theme: light and neutral (2026-10-31). Replaces the Hallmark "Hedgerow" dark-green theme: warm off-white
+ * paper, near-black ink, Prata heads over Manrope, one deep teal-blue accent. The depth ramp is unchanged.
+ * MapLibre's own CSS is imported first so the rules below (popups, controls) override it. */
+@import url("maplibre-gl/dist/maplibre-gl.css");
 @import url("./tokens.css");
 @import url("./base.css");
 
@@ -12,24 +10,24 @@
 :root {
   --data-1: oklch(95.4% 0.014 224); --data-2: oklch(85.8% 0.043 225); --data-3: oklch(75.1% 0.072 231);
   --data-4: oklch(82.9% 0.116 86); --data-5: oklch(66.3% 0.135 53); --data-6: oklch(43.7% 0.133 33);
-  --data-none: oklch(40% 0.022 150); /* a grey-green clear of both the ground and the data hues */
+  --data-none: oklch(85% 0.006 80); /* a warm grey, clear of the map ground and the blue shallow steps */
   --panel-width: 400px;
   --control-h: 40px;
 }
 
 body { display: flex; height: 100dvh; }
-#map { flex: 1; min-width: 0; background: var(--color-paper-2); }
+#map { flex: 1; min-width: 0; background: var(--map-ground); }
 
 /* Side panel */
 #panel { width: var(--panel-width); flex-shrink: 0; display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-lg); overflow: auto; background: var(--color-paper); color: var(--color-ink); border-left: var(--rule-hair) solid var(--color-rule); }
 #panel > h1 { font-size: var(--text-2xl); max-width: none; }
-#banner { padding: var(--space-xs) var(--space-sm); background: var(--color-ink); color: var(--color-paper); font-size: var(--text-sm); }
+#banner { padding: var(--space-xs) var(--space-sm); background: oklch(94% 0.06 90); color: var(--color-ink); font-size: var(--text-sm); }
 
 label, .field { display: flex; flex-direction: column; gap: var(--space-2xs); font-size: var(--text-sm); font-weight: 500; color: var(--color-muted); }
 
 /* Inputs: square, a muted edge on the darker paper, the ring an outline */
 #search { width: 100%; }
-#search, select { height: var(--control-h); padding: 0 var(--space-sm); border: var(--rule-hair) solid var(--color-muted); border-radius: var(--radius-card); background: var(--color-paper-2); color: var(--color-ink); font-size: var(--text-md); font-weight: 400; }
+#search, select { height: var(--control-h); padding: 0 var(--space-sm); border: var(--rule-hair) solid var(--color-muted); border-radius: var(--radius-card); background: var(--color-paper-3); color: var(--color-ink); font-size: var(--text-md); font-weight: 400; }
 select { cursor: pointer; }
 #search::placeholder { color: var(--color-muted); }
 #search:hover, select:hover { border-color: var(--color-ink-2); }
@@ -37,7 +35,7 @@ select { cursor: pointer; }
 select:disabled, #search:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .search { position: relative; }
-#search-results { position: absolute; top: 100%; left: 0; right: 0; z-index: var(--z-dropdown); margin: var(--space-2xs) 0 0; padding: var(--space-2xs) 0; list-style: none; max-height: 300px; overflow: auto; background: var(--color-paper-3); border: var(--rule-hair) solid var(--color-rule); }
+#search-results { box-shadow: var(--shadow-pop); position: absolute; top: 100%; left: 0; right: 0; z-index: var(--z-dropdown); margin: var(--space-2xs) 0 0; padding: var(--space-2xs) 0; list-style: none; max-height: 300px; overflow: auto; background: var(--color-paper-3); border: var(--rule-hair) solid var(--color-rule); }
 #search-results li { display: flex; justify-content: space-between; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); cursor: pointer; color: var(--color-ink); }
 #search-results li small { color: var(--color-muted); font-size: var(--text-sm); }
 #search-results li:hover { background: var(--color-paper-2); }
@@ -56,7 +54,7 @@ select:disabled, #search:disabled { opacity: 0.55; cursor: not-allowed; }
 /* Depth scale: one stepped bar, each step labelled by its lower bound */
 #legend { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)) auto; gap: var(--space-3xs) 0; align-items: start; font-size: var(--text-sm); color: var(--color-ink-2); }
 #legend .step { display: flex; flex-direction: column; gap: var(--space-2xs); font-variant-numeric: tabular-nums; }
-#legend .step i, #legend .none i { display: block; height: 12px; }
+#legend .step i, #legend .none i { display: block; height: 12px; box-shadow: inset 0 0 0 1px oklch(23% 0.012 250 / 0.12); }
 #legend .none { display: flex; flex-direction: column; gap: var(--space-2xs); margin-left: var(--space-md); color: var(--color-muted); }
 #legend .none i { width: 24px; }
 #legend .unit { grid-column: 1 / -1; color: var(--color-muted); }
@@ -82,7 +80,7 @@ select:disabled, #search:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn--primary { background: var(--color-accent); color: var(--color-accent-ink); }
 .btn--primary:hover { background: var(--color-accent-2); border-color: var(--color-accent-2); }
 .btn--secondary { background: transparent; color: var(--color-accent); }
-.btn--secondary:hover { background: color-mix(in oklab, var(--color-accent) 12%, transparent); }
+.btn--secondary:hover { background: var(--color-accent-wash); }
 .btn--quiet { background: transparent; color: var(--color-ink); border-color: var(--color-rule); }
 .btn--quiet:hover { border-color: var(--color-ink-2); }
 .btn:active { transform: translateY(1px); }
@@ -91,17 +89,19 @@ select:disabled, #search:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn[aria-busy="true"] { cursor: progress; }
 @media (prefers-reduced-motion: reduce) { .btn { transition: background-color var(--dur-short) linear; } .btn:active { transform: none; } }
 
-/* MapLibre chrome in the theme: cream controls, a green popup, a quiet attribution */
-.maplibregl-ctrl-group { border-radius: var(--radius-card) !important; background: var(--color-ink) !important; box-shadow: none !important; }
+/* MapLibre chrome: white controls and popups with dark ink (popup text was unreadable before: our light
+   text sat on MapLibre's white popup because its CSS loaded after ours) */
+.maplibregl-ctrl-group { border-radius: var(--radius-card) !important; background: var(--color-paper-3) !important; box-shadow: var(--shadow-pop) !important; }
 .maplibregl-ctrl-group button { width: 36px !important; height: 36px !important; }
-.maplibregl-ctrl-group button + button { border-top: var(--rule-hair) solid var(--color-muted) !important; }
+.maplibregl-ctrl-group button + button { border-top: var(--rule-hair) solid var(--color-rule) !important; }
 .maplibregl-ctrl-group button:focus-visible { outline: 2px solid var(--color-focus) !important; outline-offset: 2px; box-shadow: none !important; }
-.maplibregl-ctrl-attrib { background: color-mix(in oklab, var(--color-paper-2) 85%, transparent) !important; color: var(--color-muted); font-size: var(--text-xs); }
+.maplibregl-ctrl-attrib { background: color-mix(in oklab, var(--color-paper-3) 85%, transparent) !important; font-size: var(--text-xs); }
 .maplibregl-ctrl-attrib, .maplibregl-ctrl-attrib-inner { color: var(--color-ink-2) !important; }
-.maplibregl-ctrl-attrib.maplibregl-compact-show { background: var(--color-paper-2) !important; }
 .maplibregl-ctrl-attrib a { color: var(--color-ink) !important; }
-.maplibregl-ctrl-attrib-button { background-color: var(--color-ink) !important; }
-.maplibregl-popup-content { background: var(--color-paper-3); color: var(--color-ink); font-size: var(--text-sm); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-card); box-shadow: none; border: var(--rule-hair) solid var(--color-rule); }
+.maplibregl-popup { max-width: 300px !important; }
+.maplibregl-popup .maplibregl-popup-content { background: var(--color-paper-3); color: var(--color-ink); font-family: var(--font-body); font-size: var(--text-sm); line-height: 1.4; padding: var(--space-xs) var(--space-sm); border-radius: 4px; box-shadow: var(--shadow-pop); border: var(--rule-hair) solid var(--color-rule); }
+.maplibregl-popup-content strong { font-weight: 700; }
+.maplibregl-popup-content .pop-sub { display: block; color: var(--color-muted); }
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--color-paper-3); }
 .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--color-paper-3); }
 .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--color-paper-3); }
@@ -136,7 +136,7 @@ body:has(#page:not([hidden])) > #map, body:has(#page:not([hidden])) > #panel { d
 .page-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-xl); align-items: start; }
 .page-grid h2 { font-size: var(--text-xl); max-width: none; margin-bottom: var(--space-sm); }
 .wells { display: flex; flex-direction: column; }
-#p-map { height: 520px; background: var(--color-paper-2); }
+#p-map { height: 520px; background: var(--map-ground); }
 .wells .hint { margin-top: var(--space-sm); max-width: 75ch; }
 .charts { display: flex; flex-direction: column; gap: var(--space-xl); }
 .charts .chart-box { height: 340px; }
@@ -160,3 +160,8 @@ body:has(#page:not([hidden])) > #map, body:has(#page:not([hidden])) > #panel { d
   #p-map { height: 360px; }
 }
 @media (pointer: coarse) { :root { --control-h: 44px; } }
+
+/* Notes and links */
+#panel > .site-nav { margin-bottom: calc(var(--space-md) * -1); }
+.page-foot { padding-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); }
+.district-pop .maplibregl-popup-content > div { display: flex; flex-direction: column; }

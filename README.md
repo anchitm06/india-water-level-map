@@ -13,6 +13,13 @@ pre/post-monsoon year slider and per-district history charts. Static site for Gi
   `pipeline/aggregate.py` is untested against real readings.
 - District boundaries are real (`pipeline/build_districts.py`); only the levels are synthetic.
 
+## Pages
+- `index.html`: the map and the district view (`#district=<id>`).
+- `about.html`: how the data was collected, cleaned, turned into district levels, checked and presented.
+- `guide.html`: how to use the site (screenshots in `public/img/`).
+Shared head tags (icon, fonts, Open Graph/Twitter cards) and the nav between pages are filled in by the
+`shared-chrome` plugin in `vite.config.ts`. The social preview image is `public/og.png` (1200x630).
+
 ## Develop
     npm install
     npm run dev        # http://localhost:5173

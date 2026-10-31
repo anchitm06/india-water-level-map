@@ -259,8 +259,29 @@ ground level), pre/post-monsoon, historical + latest data, per-district history 
   heading and figure kept. Fresh-context finish review: 8 findings, 7 resolved, 1 partial (spare room
   in the district view's right column when no well is picked). Before/after: `.hallmark/compare.html`.
 
+## Launch prep: speed, light theme, about and guide pages (2026-10-31)
+- **Speed.** First-load JS 298 -> 222 KB gzipped: Chart.js registers only the line-chart parts and lives in
+  `src/charts.ts`, loaded lazily with the district view (`src/detail.ts`); both are prefetched when the
+  browser is idle after the map draws. MapLibre is its own chunk so app changes don't invalidate it.
+  `levels.json` and `districts.geojson` are preloaded from `index.html`, so they download alongside the JS.
+  A district pick prefetches its station file (`shared.loadStations`, shared cache). Fill expressions are
+  cached per season/year for smooth Play. The data files were already compact (3-decimal coordinates,
+  minified); TopoJSON would only save ~15 KB gzipped, so it was not adopted. Levels keep 2 decimals (trends).
+- **Theme.** Hedgerow dark green replaced by a light neutral theme (`src/tokens.css`): off-white paper,
+  near-black ink, teal-blue accent (#006186, 6.7:1 on paper), orange post-monsoon series. Depth ramp unchanged;
+  map ground `--map-ground`, district lines `--map-line`, no data a warm grey.
+- **Hover bug fixed.** `maplibre-gl.css` was imported from `main.ts`, after our CSS, so its white popup
+  background won while our cream text stayed: unreadable. It is now `@import`ed first in `style.css`.
+  Districts on the main map also show a hover popup (name, state, value).
+- **Pages.** `about.html` (method, numbers from this file) and `guide.html`, multi-page Vite build, nav
+  links, Open Graph/Twitter cards and `public/og.png`. Checked in headless Chromium at 1440 and 390 px:
+  popups dark-on-white, all flows, no horizontal overflow, no console errors.
+- Noticed, not changed: post-monsoon 2026 has no district values (season not yet measured), so that
+  year shows all grey.
+
 ## Next steps
-1. Merge to `main` so the live site gets the redesign.
+1. Merge to `main` and enable Pages (Settings -> Pages -> Source: GitHub Actions); then check the share
+   card with the X and LinkedIn post inspectors.
 2. (Aliases done, see above.)
 3. (Boundaries and matcher done, see above.) Still: sensitive-border compliance check.
 4. Run `aggregate.py`, validate against published CGWB figures, replace the placeholder data,

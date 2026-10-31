@@ -49,31 +49,6 @@ export const CLASSES: [number, string][] = [
 export const noData = () => token("--data-none");
 export const colorFor = (v: number | null | undefined) => v == null ? noData() : token(CLASSES.find(([max]) => v < max)![1]);
 
-/** Point radius for a line series: a reading with no neighbour on either side is drawn as a dot,
- * since a line alone would not show it; every other point stays unmarked. */
-export const loneDot = (r = 3) => (ctx: any) => {
-  const d = ctx.dataset.data as (number | null)[], i = ctx.dataIndex;
-  return d[i] != null && d[i - 1] == null && d[i + 1] == null ? r : 0;
-};
-
-/** Chart.js styling from the theme: the pre-monsoon series takes the accent, post-monsoon the pale ink. */
-export const seriesColor = (s: Season) => token(s === "pre" ? "--color-accent" : "--color-ink-2");
-export function chartTheme(Chart: any) {
-  Chart.defaults.color = token("--color-muted");
-  Chart.defaults.borderColor = token("--color-rule");
-  Chart.defaults.font.family = getComputedStyle(document.documentElement).getPropertyValue("--font-body").trim();
-  Chart.defaults.font.size = 12;
-  Chart.defaults.plugins.legend.labels.color = token("--color-ink-2");
-  Chart.defaults.plugins.legend.labels.boxWidth = 16;
-  Chart.defaults.plugins.legend.labels.boxHeight = 2;
-  Chart.defaults.plugins.tooltip.backgroundColor = token("--color-paper-3");
-  Chart.defaults.plugins.tooltip.titleColor = token("--color-ink");
-  Chart.defaults.plugins.tooltip.bodyColor = token("--color-ink-2");
-  Chart.defaults.plugins.tooltip.borderColor = token("--color-rule");
-  Chart.defaults.plugins.tooltip.borderWidth = 1;
-  Chart.defaults.plugins.tooltip.cornerRadius = 0;
-}
-
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 /** [[west, south], [east, north]] of a GeoJSON geometry. */
@@ -87,3 +62,14 @@ export function bbox(geom: any): [[number, number], [number, number]] {
   return [[x0, y0], [x1, y1]];
 }
 export const base = import.meta.env.BASE_URL;
+
+/** public/data/stations/<id>.json, fetched once per district. Called early (on a district pick) to warm the cache. */
+const stationCache = new Map<string, Promise<Station[]>>();
+export function loadStations(id: string): Promise<Station[]> {
+  if (!stationCache.has(id)) {
+    // no file = no wells (404 on Pages; dev/preview servers answer with index.html instead)
+    stationCache.set(id, fetch(`${base}data/stations/${id}.json`).then((r) => (r.ok ? r.json() : { stations: [] }))
+      .then((j) => j.stations ?? [], () => []));
+  }
+  return stationCache.get(id)!;
+}
