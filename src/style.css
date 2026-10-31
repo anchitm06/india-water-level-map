@@ -1,44 +1,162 @@
-:root { --bg:#f6f7f9; --fg:#1b1f24; --card:#fff; --line:#d7dce1; --accent:#1f5fa8; }
-@media (prefers-color-scheme: dark) { :root { --bg:#14181d; --fg:#e8ebef; --card:#1d232a; --line:#333b44; --accent:#6aa7e8; } }
-* { box-sizing: border-box; }
-body { margin:0; font:14px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--fg); display:flex; height:100vh; }
-#map { flex:1; min-width:0; }
-#panel { width:340px; padding:16px; overflow:auto; background:var(--card); border-left:1px solid var(--line); }
-h1 { font-size:18px; margin:0 0 8px; } h2 { font-size:15px; margin:12px 0 0; }
-.row { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
-label { display:flex; flex-direction:column; gap:2px; font-weight:600; }
-select,button { font:inherit; padding:6px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); cursor:pointer; }
-button:hover { border-color:var(--accent); }
-#banner { background:#fff3cd; color:#5c4400; padding:6px 8px; border-radius:6px; margin:6px 0; }
-#legend { display:flex; flex-direction:column; gap:3px; margin:8px 0; }
-#legend div { display:flex; align-items:center; gap:6px; }
-#legend i { width:18px; height:12px; border-radius:2px; display:inline-block; }
-.hint,.note { color:#7a828b; font-size:12px; }
-.search { position:relative; display:flex; flex-direction:column; gap:2px; margin:8px 0; }
-.search label { font-weight:600; }
-#search { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
-#search:focus { outline:2px solid var(--accent); outline-offset:-1px; }
-#search-results { position:absolute; top:100%; left:0; right:0; z-index:5; margin:2px 0 0; padding:4px 0; list-style:none;
-  background:var(--card); border:1px solid var(--line); border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.15); max-height:300px; overflow:auto; }
-#search-results li { display:flex; justify-content:space-between; gap:8px; padding:6px 10px; cursor:pointer; }
-#search-results li small { color:#7a828b; }
-#search-results li[aria-selected="true"], #search-results li:hover { background:var(--bg); }
-#search-results li.empty { color:#7a828b; cursor:default; }
-.actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
-#page { position:fixed; inset:0; z-index:10; overflow:auto; background:var(--bg); padding:16px; }
-#page[hidden] { display:none; }
-.page-head { display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
-.page-title { flex:1; min-width:200px; } .page-title h1 { margin:0; } .page-title p { margin:2px 0 0; }
-.stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:12px; }
-.stat { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:2px; }
-.stat span { font-size:12px; color:#7a828b; } .stat strong { font-size:17px; } .stat small { font-size:12px; color:#7a828b; }
-.page-grid { display:grid; grid-template-columns:3fr 2fr; grid-template-rows:auto auto; gap:12px; }
-.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; min-width:0; }
-.card h2 { margin:0 0 8px; }
-#p-well-sub { margin:-4px 0 8px; }
-.maplibregl-popup-content { color:#1b1f24; font:13px/1.3 system-ui,sans-serif; padding:6px 8px; } /* white popup in dark mode too */
-.wells { grid-row:span 2; display:flex; flex-direction:column; }
-#p-map { flex:1; min-height:420px; border-radius:6px; overflow:hidden; }
-.chart-box { position:relative; height:260px; }
-@media (max-width:700px) { body { flex-direction:column; } #map { height:55vh; flex:none; } #panel { width:auto; border-left:0; border-top:1px solid var(--line); }
-  .page-grid { grid-template-columns:1fr; } .wells { grid-row:auto; } #p-map { min-height:320px; } }
+/* Hallmark · shape: app screen · genre: editorial · theme: Hedgerow (deal 1/3, seed district-map-groundwater-depth-e418·4a4aafa2·2026-10-31·r0) · redesign: full
+ * nav: kept, the side panel is the shell; a back pill on the district view · signature: the year in Prata beside the map, stepping with Play · states: no district picked, no wells, no well picked · hedgerow: hedge
+ * axes: dark/high-contrast-serif/chromatic-green · posture: drenched · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: H, seven equal stat boxes led the district view; now one figure leads and six sit in ruled columns */
+/* Hallmark · finish-review: subagent, fix, 8 findings, 7 resolved 1 partial (6: the right column still has room under the well hint) · gap: none */
+/* Hallmark · answered F4 · the second fill is MapLibre's attribution toggle, an icon button given a cream ground so its dark glyph shows on the green map */
+@import url("./tokens.css");
+@import url("./base.css");
+
+/* The depth scale is the data's own encoding (pale blue for shallow to rust for deep), kept from the
+   original map in OKLCH; no data is a neutral grey-green, findable but quieter than any measured value. */
+:root {
+  --data-1: oklch(95.4% 0.014 224); --data-2: oklch(85.8% 0.043 225); --data-3: oklch(75.1% 0.072 231);
+  --data-4: oklch(82.9% 0.116 86); --data-5: oklch(66.3% 0.135 53); --data-6: oklch(43.7% 0.133 33);
+  --data-none: oklch(40% 0.022 150); /* a grey-green clear of both the ground and the data hues */
+  --panel-width: 400px;
+  --control-h: 40px;
+}
+
+body { display: flex; height: 100dvh; }
+#map { flex: 1; min-width: 0; background: var(--color-paper-2); }
+
+/* Side panel */
+#panel { width: var(--panel-width); flex-shrink: 0; display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-lg); overflow: auto; background: var(--color-paper); color: var(--color-ink); border-left: var(--rule-hair) solid var(--color-rule); }
+#panel > h1 { font-size: var(--text-2xl); max-width: none; }
+#banner { padding: var(--space-xs) var(--space-sm); background: var(--color-ink); color: var(--color-paper); font-size: var(--text-sm); }
+
+label, .field { display: flex; flex-direction: column; gap: var(--space-2xs); font-size: var(--text-sm); font-weight: 500; color: var(--color-muted); }
+
+/* Inputs: square, a muted edge on the darker paper, the ring an outline */
+#search { width: 100%; }
+#search, select { height: var(--control-h); padding: 0 var(--space-sm); border: var(--rule-hair) solid var(--color-muted); border-radius: var(--radius-card); background: var(--color-paper-2); color: var(--color-ink); font-size: var(--text-md); font-weight: 400; }
+select { cursor: pointer; }
+#search::placeholder { color: var(--color-muted); }
+#search:hover, select:hover { border-color: var(--color-ink-2); }
+#search:focus-visible, select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+select:disabled, #search:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.search { position: relative; }
+#search-results { position: absolute; top: 100%; left: 0; right: 0; z-index: var(--z-dropdown); margin: var(--space-2xs) 0 0; padding: var(--space-2xs) 0; list-style: none; max-height: 300px; overflow: auto; background: var(--color-paper-3); border: var(--rule-hair) solid var(--color-rule); }
+#search-results li { display: flex; justify-content: space-between; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); cursor: pointer; color: var(--color-ink); }
+#search-results li small { color: var(--color-muted); font-size: var(--text-sm); }
+#search-results li:hover { background: var(--color-paper-2); }
+#search-results li[aria-selected="true"] { background: var(--color-paper-2); box-shadow: inset 2px 0 0 var(--color-accent); } /* the keyboard's row */
+#search-results li.empty { color: var(--color-muted); cursor: default; box-shadow: none; background: none; }
+
+/* Season and year: the year is the figure the map is set to */
+.time { display: flex; flex-direction: column; gap: var(--space-md); padding-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); }
+.year { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label label" "fig play" "range range"; align-items: end; gap: var(--space-2xs) var(--space-md); }
+.year > label { grid-area: label; }
+#year-out { grid-area: fig; font-family: var(--font-display); font-size: 4rem; /* the signature: a step above the title */ line-height: 1; color: var(--color-ink); font-variant-numeric: lining-nums tabular-nums; }
+#play { grid-area: play; }
+#year { grid-area: range; width: 100%; height: 44px; margin: 0; accent-color: var(--color-accent); cursor: pointer; background: transparent; }
+#year:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 0; }
+
+/* Depth scale: one stepped bar, each step labelled by its lower bound */
+#legend { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)) auto; gap: var(--space-3xs) 0; align-items: start; font-size: var(--text-sm); color: var(--color-ink-2); }
+#legend .step { display: flex; flex-direction: column; gap: var(--space-2xs); font-variant-numeric: tabular-nums; }
+#legend .step i, #legend .none i { display: block; height: 12px; }
+#legend .none { display: flex; flex-direction: column; gap: var(--space-2xs); margin-left: var(--space-md); color: var(--color-muted); }
+#legend .none i { width: 24px; }
+#legend .unit { grid-column: 1 / -1; color: var(--color-muted); }
+
+/* The picked district */
+#detail { display: flex; flex-direction: column; gap: var(--space-sm); padding-top: var(--space-md); border-top: 1.5px solid var(--color-accent); }
+#d-name { font-size: var(--text-2xl); max-width: none; }
+.reading { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2xs) var(--space-sm); color: var(--color-ink-2); font-size: var(--text-sm); }
+.reading .state { flex-basis: 100%; color: var(--color-muted); }
+.reading .figure { font-family: var(--font-display); font-size: var(--text-3xl); line-height: 1.05; color: var(--color-ink); font-variant-numeric: lining-nums tabular-nums; }
+.reading .estimated { flex-basis: 100%; color: var(--color-muted); }
+.chart-box { position: relative; height: 240px; }
+.chart-box--panel { height: 200px; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+
+.hint, .note { font-size: var(--text-sm); color: var(--color-muted); }
+.notes { display: flex; flex-direction: column; gap: var(--space-xs); padding-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); }
+
+/* Controls: the chartreuse pill and its outlined partner, all eight states */
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--control-h); padding: 0 var(--space-md); border: 1.5px solid var(--color-accent); border-radius: var(--radius-pill); font-size: var(--text-sm); font-weight: 700; white-space: nowrap; cursor: pointer; position: relative;
+  transition: background-color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out), transform var(--dur-micro) var(--ease-out); }
+.btn::after { content: ""; position: absolute; inset: -2px; } /* 44px hit target around a 40px pill */
+.btn--primary { background: var(--color-accent); color: var(--color-accent-ink); }
+.btn--primary:hover { background: var(--color-accent-2); border-color: var(--color-accent-2); }
+.btn--secondary { background: transparent; color: var(--color-accent); }
+.btn--secondary:hover { background: color-mix(in oklab, var(--color-accent) 12%, transparent); }
+.btn--quiet { background: transparent; color: var(--color-ink); border-color: var(--color-rule); }
+.btn--quiet:hover { border-color: var(--color-ink-2); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; transform: none; }
+.btn[aria-busy="true"] { cursor: progress; }
+@media (prefers-reduced-motion: reduce) { .btn { transition: background-color var(--dur-short) linear; } .btn:active { transform: none; } }
+
+/* MapLibre chrome in the theme: cream controls, a green popup, a quiet attribution */
+.maplibregl-ctrl-group { border-radius: var(--radius-card) !important; background: var(--color-ink) !important; box-shadow: none !important; }
+.maplibregl-ctrl-group button { width: 36px !important; height: 36px !important; }
+.maplibregl-ctrl-group button + button { border-top: var(--rule-hair) solid var(--color-muted) !important; }
+.maplibregl-ctrl-group button:focus-visible { outline: 2px solid var(--color-focus) !important; outline-offset: 2px; box-shadow: none !important; }
+.maplibregl-ctrl-attrib { background: color-mix(in oklab, var(--color-paper-2) 85%, transparent) !important; color: var(--color-muted); font-size: var(--text-xs); }
+.maplibregl-ctrl-attrib, .maplibregl-ctrl-attrib-inner { color: var(--color-ink-2) !important; }
+.maplibregl-ctrl-attrib.maplibregl-compact-show { background: var(--color-paper-2) !important; }
+.maplibregl-ctrl-attrib a { color: var(--color-ink) !important; }
+.maplibregl-ctrl-attrib-button { background-color: var(--color-ink) !important; }
+.maplibregl-popup-content { background: var(--color-paper-3); color: var(--color-ink); font-size: var(--text-sm); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-card); box-shadow: none; border: var(--rule-hair) solid var(--color-rule); }
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--color-paper-3); }
+.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--color-paper-3); }
+.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--color-paper-3); }
+.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--color-paper-3); }
+
+/* District view */
+/* Open, the district view is the page: the map screen steps aside and the document scrolls */
+#page { flex: 1; min-width: 0; background: var(--color-paper); }
+#page[hidden] { display: none; }
+body:has(#page:not([hidden])) { display: block; height: auto; }
+body:has(#page:not([hidden])) > #map, body:has(#page:not([hidden])) > #panel { display: none; }
+.page-inner { max-width: var(--container); margin-inline: auto; padding: var(--space-lg) var(--space-xl) var(--space-2xl); display: flex; flex-direction: column; gap: var(--space-xl); }
+.page-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: var(--space-lg); }
+.page-head #p-back { align-self: center; }
+#p-name { font-size: var(--text-display); line-height: 1.05; max-width: none; }
+#p-sub { margin-top: var(--space-2xs); color: var(--color-muted); font-size: var(--text-sm); }
+.page-controls { display: flex; gap: var(--space-sm); }
+
+/* Figures: the level leads, six more in ruled columns on the darker paper */
+.stats { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 12fr); gap: var(--space-xl); padding: var(--space-lg) var(--space-xl); background: var(--color-paper-2); }
+.stats .lead { display: flex; flex-direction: column; gap: var(--space-2xs); max-width: none; }
+.stats .lead .label, .stats dt { font-size: var(--text-sm); font-weight: 500; color: var(--color-muted); }
+.stats .lead .figure { font-family: var(--font-display); font-size: 3.5rem; /* leads the band, above the district name */ line-height: 1; color: var(--color-accent); font-variant-numeric: lining-nums tabular-nums; }
+.stats .lead .sub { font-size: var(--text-sm); color: var(--color-ink-2); }
+.stats dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-lg) 0; margin: 0; }
+.stats dl > div { display: flex; flex-direction: column; gap: var(--space-3xs); padding: 0 var(--space-lg); border-left: var(--rule-hair) solid var(--color-rule); min-width: 0; }
+.stats dl > div:nth-child(3n+1) { padding-left: 0; border-left: 0; }
+.stats dl > div:nth-child(3n) { padding-right: 0; }
+.stats dd { margin: 0; font-size: var(--text-lg); font-weight: 700; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+.stats dd small { display: block; font-size: var(--text-sm); font-weight: 400; color: var(--color-ink-2); }
+
+.page-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-xl); align-items: start; }
+.page-grid h2 { font-size: var(--text-xl); max-width: none; margin-bottom: var(--space-sm); }
+.wells { display: flex; flex-direction: column; }
+#p-map { height: 520px; background: var(--color-paper-2); }
+.wells .hint { margin-top: var(--space-sm); max-width: 75ch; }
+.charts { display: flex; flex-direction: column; gap: var(--space-xl); }
+.charts .chart-box { height: 340px; }
+.charts .well .chart-box { height: 260px; }
+.charts .well { padding-top: var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); }
+#p-well-sub { margin: calc(var(--space-sm) * -1) 0 var(--space-sm); }
+#p-well-title.empty { font-family: var(--font-body); font-size: var(--text-md); color: var(--color-muted); margin-bottom: 0; }
+
+@media (max-width: 60rem) {
+  body { flex-direction: column; height: auto; }
+  #map { height: 60svh; flex: none; }
+  #panel { width: auto; border-left: 0; border-top: var(--rule-hair) solid var(--color-rule); overflow: visible; }
+  .page-inner { padding: var(--space-md) var(--space-md) var(--space-xl); gap: var(--space-lg); }
+  .page-head { grid-template-columns: minmax(0, 1fr); align-items: start; }
+  .page-head #p-back { justify-self: start; }
+  .stats { grid-template-columns: minmax(0, 1fr); padding: var(--space-lg) var(--space-md); }
+  .stats dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats dl > div:nth-child(n) { padding: 0 0 0 var(--space-md); border-left: var(--rule-hair) solid var(--color-rule); }
+  .stats dl > div:nth-child(odd) { padding-left: 0; border-left: 0; }
+  .page-grid { grid-template-columns: minmax(0, 1fr); }
+  #p-map { height: 360px; }
+}
+@media (pointer: coarse) { :root { --control-h: 44px; } }
