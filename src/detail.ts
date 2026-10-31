@@ -7,6 +7,7 @@ const ordinal = (n: number) => {
   const sfx = ["th", "st", "nd", "rd"], v = n % 100;
   return n + (sfx[(v - 20) % 10] ?? sfx[v] ?? sfx[0]); // 1st 2nd 3rd 4th ... 11th 12th 13th ... 21st
 };
+const short = (s: string, n = 48) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s); // hover labels; WRIS names reach 86 chars
 const change = (d: number) => `${Math.abs(d).toFixed(2)} m ${d > 0 ? "deeper" : "shallower"}`;
 const rate = (r: number | null) => r == null ? "not enough data" : `${Math.abs(r).toFixed(2)} m/year ${r > 0 ? "deeper" : "shallower"}`;
 
@@ -118,7 +119,7 @@ export function createDetailView(gj: any, levels: Levels, onClose: (season: Seas
         const v = st[season()][y] ?? null;
         return { type: "Feature", geometry: { type: "Point", coordinates: [st.lon, st.lat] },
                  properties: { id: st.id, has: v != null, color: v == null ? NO_DATA : colorFor(v), manual: st.manual,
-                               label: `${wellName(st)}${st.name && st.place ? ` (near ${st.place})` : ""}: ${v == null ? "not measured" : `${v.toFixed(1)} m`}` } };
+                               label: `${short(wellName(st))}${st.name && st.place ? ` (near ${st.place})` : ""}: ${v == null ? "not measured" : `${v.toFixed(1)} m`}` } };
       }),
     };
   }

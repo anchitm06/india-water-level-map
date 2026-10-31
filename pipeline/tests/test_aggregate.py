@@ -135,8 +135,20 @@ def test_display_name_formats_seen_in_wris():
     assert display_name({"stationName": "LUDHIANA;DORAHA;PAYAL;GOVT. SR. SCHOOL", "district": "LUDHIANA"}, "X") == "Govt. Sr. School, Payal"
     assert display_name({"stationName": "LUDHIANA;LUDHIANA WEST;SUDHAR;KHANDUR;Subsidary Health Centre", "district": "LUDHIANA"}, "X") \
         == "Subsidary Health Centre, Khandur"
-    assert display_name({"stationName": "Delhi East Mayur vihar Kondli DJB WTP"}, "X") == "Delhi East Mayur vihar Kondli DJB WTP"
-    assert display_name({"stationName": "Delhi East PREET VIHAR Bank Enclave Pz"}, "X") == "Delhi East Preet Vihar Bank Enclave Pz"
+    assert display_name({"stationName": "Delhi East Mayur vihar Kondli DJB WTP", "state": "Delhi", "district": "EAST"}, "X") \
+        == "Mayur vihar Kondli DJB WTP"
+    assert display_name({"stationName": "Delhi East PREET VIHAR Bank Enclave Pz", "state": "Delhi", "district": "EAST"}, "X") \
+        == "Preet Vihar Bank Enclave Pz"
+    assert display_name({"stationName": "Punjab Jalandhar Shahkot Malsian-D Pz", "state": "Punjab", "district": "JALANDHAR"}, "X") \
+        == "Shahkot Malsian-D Pz"
+    assert display_name({"stationName": "Ludhiana Pakhowal Pakhowal 200m Deep", "district": "LUDHIANA"}, "X") == "Pakhowal 200m Deep"
+    assert display_name({"stationName": "Pratapgarh", "district": "Pratapgarh"}, "X") == "Pratapgarh"  # never empty
+    assert display_name({"stationName": "W180937076402201"}, "X") is None  # a code, not a name
+    assert display_name({"stationName": "W180937076402201", "village": "Kharosa"}, "X") == "Kharosa"
+    assert display_name({"stationName": "Jetprol-NQM"}, "X") == "Jetprol-NQM"
+    assert display_name({"stationName": "*Manipura"}, "X") == "Manipura"
+    assert display_name({"stationName": "Jogaldari_Pz"}, "X") == "Jogaldari Pz"
+    assert display_name({"stationName": "ABHY_KCH_0001"}, "ABHY_KCH_0002") is None
     assert display_name({"stationName": "gazipur crossing pz"}, "X") == "Gazipur Crossing pz"
     assert display_name({"stationName": "PIZ10218"}, "PIZ10218") is None  # the code itself is no name
     assert display_name({"stationName": "-", "village": "KHANDUR"}, "X") == "Khandur"

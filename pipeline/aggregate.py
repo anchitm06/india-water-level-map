@@ -230,6 +230,13 @@ def main() -> None:
           f"district-season values -> public/data/levels.json; {n_files} station files -> public/data/stations/")
 
 
+def looks_like_code(s: str) -> bool:
+    """A station code used as a name: one token, no lower case, 3+ digits ("W180937076402201",
+    "PIZ10218", "ABHY_KCH_0001")."""
+    s = s.strip()
+    return " " not in s and not any(c.islower() for c in s) and sum(c.isdigit() for c in s) >= 3
+
+
 def display_name(raw: dict, sid: str) -> str | None:
     """India-WRIS station fields -> a readable well name, or None if WRIS gives nothing useful.
     Seen formats: "LUDHIANA;DORAHA;PAYAL;GOVT. SR. SCHOOL" (district;block;village;site, shown as
@@ -240,10 +247,20 @@ def display_name(raw: dict, sid: str) -> str | None:
         skip = junk | {(raw.get(k) or "").strip().upper() for k in ("district", "state")}
         parts = [p.strip() for p in name.split(";") if p.strip().upper() not in skip]
         name = f"{parts[-1]}, {parts[-2]}" if len(parts) >= 2 else (parts[0] if parts else "")
-    if name.upper() in junk:
+    if name.upper() in junk or looks_like_code(name):
         name = (raw.get("village") or "").strip()
-        if name.upper() in junk:
+        if name.upper() in junk or looks_like_code(name):
             return None
+    name = name.replace("_", " ").strip("*#-_ ")  # "*Manipura", "Jogaldari_Pz"
+    # The page already shows state and district: drop them as leading words ("Punjab Jalandhar
+    # Shahkot Malsian-D Pz" -> "Shahkot Malsian-D Pz"), and words repeated back to back.
+    places = {w for k in ("state", "district") for w in (raw.get(k) or "").upper().split()}
+    words = name.split()
+    lead = 0
+    while lead < len(words) - 1 and words[lead].upper().strip(",") in places:
+        lead += 1
+    words = [w for i, w in enumerate(words[lead:]) if i == 0 or w.upper() != words[lead + i - 1].upper()]
+    name = " ".join(words)
     if name.islower():
         return " ".join(w.capitalize() if len(w) > 2 else w for w in name.split())
     # ALL-CAPS words longer than 3 letters are names (PAYAL) and ones ending in "." abbreviations
