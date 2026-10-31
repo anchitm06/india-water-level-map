@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About the data: India Groundwater Levels</title>
+  <meta name="description" content="How 9 million groundwater readings from India-WRIS were collected, cleaned, turned into district levels, checked against CGWB's yearbook, and mapped." />
+  <!--SHARED-HEAD-->
+  <link rel="stylesheet" href="./src/page.css" />
+</head>
+<body>
+  <header class="site-head"><div class="container"><a class="brand" href="./">India groundwater levels</a><!--SITE-NAV--></div></header>
+  <main class="prose">
+    <header>
+      <h1>How this data was collected, prepared and checked</h1>
+      <p class="lead">Every number on the map comes from public well readings published on India-WRIS. This page explains each step from raw readings to a coloured district, what was checked, and where the data is weak.</p>
+      <div class="figures">
+        <div><b>9.07 million</b><span>daily readings downloaded</span></div>
+        <div><b>64,494</b><span>monitoring wells on the map</span></div>
+        <div><b>650 of 724</b><span>districts with at least one value</span></div>
+        <div><b>1985 to 2026</b><span>pre- and post-monsoon</span></div>
+      </div>
+    </header>
+
+    <nav class="toc" aria-label="On this page">
+      <h2>On this page</h2>
+      <ol>
+        <li><a href="#source">Source</a></li>
+        <li><a href="#collection">Collection</a></li>
+        <li><a href="#cleaning">Cleaning</a></li>
+        <li><a href="#districts">From wells to districts</a></li>
+        <li><a href="#verification">Verification</a></li>
+        <li><a href="#presentation">Presentation</a></li>
+        <li><a href="#boundaries">Boundaries and names</a></li>
+        <li><a href="#limits">Limitations</a></li>
+        <li><a href="#reproduce">Reproduce it</a></li>
+      </ol>
+    </nav>
+
+    <div class="body">
+      <section id="source" aria-labelledby="h-source">
+        <h2 id="h-source">Source</h2>
+        <p>The readings come from the <a href="https://indiawris.gov.in/" rel="noopener">India Water Resources Information System (India-WRIS)</a>, the national water data portal of the Ministry of Jal Shakti. Its <em>Ground Water Level</em> dataset holds measurements of the depth from the ground surface down to the water in a well, reported by the Central Ground Water Board (CGWB) and by state groundwater departments.</p>
+        <p>Two kinds of well report into it:</p>
+        <ul>
+          <li><strong>Manual wells</strong>: CGWB's national network of observation wells, measured by hand a few times a year. This is the network CGWB's own yearbooks are based on, and it goes back decades.</li>
+          <li><strong>Telemetric wells</strong> (piezometers with automatic sensors): mostly added from about 2020 onwards, reporting daily or more often. They tend to tap deeper water than the older manual wells.</li>
+        </ul>
+        <p>Depth is measured in <strong>metres below ground level (m bgl)</strong>. A larger number means the water is further down: a deeper, and usually more stressed, water table.</p>
+      </section>
+
+      <section id="collection" aria-labelledby="h-collection">
+        <h2 id="h-collection">Collection</h2>
+        <p>India-WRIS publishes an open API for the dataset. The site's download script asked it for every state, district and reporting agency it lists (1,195 combinations after removing districts listed twice under different spellings), for every year from 1985 to 2026.</p>
+        <ul>
+          <li>Only the two seasons the map shows were requested, following CGWB practice: <strong>pre-monsoon</strong> (March to May, the water table at its lowest) and <strong>post-monsoon</strong> (October to December, after the rains have recharged it).</li>
+          <li>The download was deliberately slow and polite: at most two requests a second, resumable, and retrying only failed windows. All 100,380 season windows were fetched; 19 that failed at first succeeded on a re-run.</li>
+          <li>Repeated readings of the same well on the same day were reduced to their median, giving 9.07 million well-days from 65,823 stations.</li>
+          <li>India-WRIS station names and village names were fetched separately so wells can be shown by name.</li>
+        </ul>
+        <p>India-WRIS is only reachable from Indian networks, so the download ran on a machine in India rather than on GitHub's servers. The data is therefore refreshed by hand, not automatically.</p>
+      </section>
+
+      <section id="cleaning" aria-labelledby="h-cleaning">
+        <h2 id="h-cleaning">Cleaning</h2>
+        <p>Raw sensor and manual data has errors. Each fix below was prompted by a real problem found in the readings.</p>
+        <ol class="flow">
+          <li><strong>Sign and impossible values.</strong> Some stations report depth as a negative number and some as positive, so the absolute value is used. Exact zeros (a common sensor artefact), the <code>-1000</code> "no data" code, anything 200 m or deeper, and readings at or beyond the well's own depth (a dry well, or a sensor sitting at the bottom) are dropped.</li>
+          <li><strong>Daily spikes.</strong> For each well and season, a day far from that well's own median for the season is removed: more than five robust standard deviations away (median absolute deviation) and at least 2 m off. About 147,000 well-days were removed this way.</li>
+          <li><strong>One value per well per season.</strong> Each well is reduced to the median of its readings in that season, so a sensor reporting 90 days counts the same as a manual well read once.</li>
+          <li><strong>Season jumps.</strong> A well's season value is compared with the same well's values within five years either side. If it is far out of line (again five robust deviations, and at least 15 m) it is removed. Comparing only nearby years lets genuine long declines and recoveries through. 5,187 well-seasons were removed, for example a batch of unrelated Delhi wells that all read about 44 m in one season.</li>
+        </ol>
+      </section>
+
+      <section id="districts" aria-labelledby="h-districts">
+        <h2 id="h-districts">From wells to districts</h2>
+        <p>Each well is placed in a district by its latitude and longitude (point in polygon). 1,255 wells fall outside every district boundary, mostly along coasts and borders, and are left out.</p>
+        <h3>Why not just take the median of each district's wells?</h3>
+        <p>Because the wells measured change from year to year. In 2024 only about 9% of measured wells were CGWB manual wells (median depth 5.3 m); the rest were newer telemetric and state wells tapping deeper water (median 13 m). A plain median made the typical district look about 2.5 m deeper between 2015 and 2024, yet the 5,541 wells measured in both years changed by only 0.2 m. Most of that apparent fall was a change in <em>which</em> wells were measured, not in the water.</p>
+        <h3>What the map does instead</h3>
+        <ol class="flow">
+          <li><strong>Chain-linking.</strong> Each year is linked to the most recent earlier year (within five years) that shares at least three wells with it. The change between the two years is the median change of those shared wells. This gives a district's trend from like-for-like comparisons.</li>
+          <li><strong>Pinning the level.</strong> The linked series is then anchored to the median of CGWB's manual wells, in the year with the most of them. A year can anchor only if manual wells are at least three and at least half of its measured wells. A well counts as manual if it has CGWB's coordinate-style code and was read on three or fewer days that season.</li>
+          <li><strong>Estimated values.</strong> Where a run of years has no usable manual wells (typically a new sensor network after 2020), it continues from the previous run's last level if that ended within five years, otherwise from its own median. These values are marked "Estimated: no manual wells this year" in the district panel.</li>
+          <li><strong>No filling.</strong> A district with no readings in a year and season shows "No data". Nothing is interpolated.</li>
+        </ol>
+        <p>With this method, the 2015 to 2024 pre-monsoon median change is 0.30 m in districts anchored to manual wells and 0.27 m in estimated ones, in line with the like-for-like well comparison.</p>
+      </section>
+
+      <section id="verification" aria-labelledby="h-verification">
+        <h2 id="h-verification">Verification</h2>
+        <h3>Against CGWB's Ground Water Year Book</h3>
+        <p>CGWB's <em>Ground Water Year Book 2023-24</em> gives, for each state, the share of its manual-network wells in each depth band. The same shares were computed from this site's cleaned data for pre-monsoon 2023, over the 25 states with data on both sides (15,565 wells in the yearbook, 13,088 here).</p>
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">Share of wells by depth band, pre-monsoon 2023</caption>
+            <thead><tr><th>Depth band</th><th class="num">CGWB yearbook</th><th class="num">This site</th></tr></thead>
+            <tbody>
+              <tr><td>0 to 2 m</td><td class="num">6.6%</td><td class="num">6.0%</td></tr>
+              <tr><td>2 to 5 m</td><td class="num">33.5%</td><td class="num">31.1%</td></tr>
+              <tr><td>5 to 10 m</td><td class="num">40.7%</td><td class="num">40.0%</td></tr>
+              <tr><td>10 to 20 m</td><td class="num">14.8%</td><td class="num">16.8%</td></tr>
+              <tr><td>20 to 40 m</td><td class="num">2.8%</td><td class="num">4.2%</td></tr>
+              <tr><td>40 m and deeper</td><td class="num">1.7%</td><td class="num">1.8%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The most common band matches in 22 of the 25 states, and large states agree within 1 to 5 percentage points (Kerala 0.8, Odisha 1.1, Madhya Pradesh 1.7, Karnataka 2.0, Chhattisgarh 2.5, Maharashtra 3.9, Rajasthan 4.6).</p>
+        <h3>What the comparison found</h3>
+        <ul>
+          <li>The gaps are in what India-WRIS publishes rather than in the processing: it has no CGWB manual readings for Haryana, Punjab, Delhi or Himachal Pradesh in pre-monsoon 2023, and post-monsoon manual data from 2023 onwards is thin (about 4,400 manual wells in November 2023 against roughly 15,000 in 2021 and 2022).</li>
+          <li>The check caught a real bug: "manual" had first been decided by station code alone, but some telemetric wells use the same codes. The rule now also requires few reading days per season, which moved 848 of 47,173 district values by more than 5 m.</li>
+        </ul>
+        <h3>Other checks</h3>
+        <ul>
+          <li>Hand checks of individual districts and wells against the raw readings (for example Delhi's pre-monsoon level: 4.3 m in 1985, 6.0 m in 1995, 8.3 m in 2005, 10.0 m in 2015).</li>
+          <li>Automated tests for the download parser, the outlier rules, chain-linking and district name matching (<code>pipeline/tests/</code>).</li>
+        </ul>
+      </section>
+
+      <section id="presentation" aria-labelledby="h-presentation">
+        <h2 id="h-presentation">Presentation</h2>
+        <p>Districts are coloured in six depth bands, the same bands CGWB uses in its yearbooks, from pale blue (shallow) to deep rust (deep). Grey means no data for that season and year.</p>
+        <ul class="swatches" aria-label="Depth bands">
+          <li><i style="background:#e6f2f7"></i>under 2 m</li>
+          <li><i style="background:#b3d7e6"></i>2 to 5 m</li>
+          <li><i style="background:#7eb7d4"></i>5 to 10 m</li>
+          <li><i style="background:#e9c269"></i>10 to 20 m</li>
+          <li><i style="background:#d2793a"></i>20 to 40 m</li>
+          <li><i style="background:#8c2d1a"></i>40 m and deeper</li>
+          <li><i style="background:#d0cdc9"></i>no data</li>
+        </ul>
+        <p>The district page summarises each district with these figures:</p>
+        <ul>
+          <li><strong>Long-term trend</strong>: the least-squares slope through all the district's values for the season, in metres per year. "Deeper" means the water table is falling. Needs at least three years.</li>
+          <li><strong>Last 10 years</strong>: the same slope over the ten years up to the selected year.</li>
+          <li><strong>Change over 10 years</strong>: the selected year against the year ten years earlier (or nine or eleven, if that year has no data).</li>
+          <li><strong>Monsoon recharge</strong>: the typical rise from pre- to post-monsoon in the same year, as the median over the ten years up to the selected year.</li>
+          <li><strong>Rank in state</strong>: where the district stands among its state's districts for the selected season and year, 1st being the deepest.</li>
+          <li><strong>Deepest and shallowest</strong>: the extreme years in the district's record for the season.</li>
+        </ul>
+        <p>Well values on the district page are each well's own cleaned seasonal value, not chain-linked.</p>
+      </section>
+
+      <section id="boundaries" aria-labelledby="h-boundaries">
+        <h2 id="h-boundaries">Boundaries and names</h2>
+        <ul>
+          <li><strong>District boundaries</strong> come from the open <a href="https://github.com/udit-001/india-maps-data" rel="noopener">india-maps-data</a> project: Census 2011 districts plus later splits, 724 districts, simplified for the web. They are a mixed-vintage set, so the newest districts are mapped to their parent district.</li>
+          <li><strong>The national outline</strong> was checked against India's official map by reference points (for example Gilgit, Aksai Chin and Siachen fall in Ladakh, Muzaffarabad in Jammu and Kashmir, Tawang in Arunachal Pradesh, Sir Creek in Kutch). The internal divisions in those areas are simplified, and this is not Survey of India's own boundary data.</li>
+          <li><strong>Well names</strong> are India-WRIS station names, cleaned up for display (89% of wells). The rest are labelled by the nearest populated place from <a href="https://www.geonames.org/" rel="noopener">GeoNames</a> (CC BY 4.0).</li>
+        </ul>
+      </section>
+
+      <section id="limits" aria-labelledby="h-limits">
+        <h2 id="h-limits">Limitations</h2>
+        <div class="callout"><p>This is an independent, unofficial visualisation of public data. For official figures, use CGWB's publications.</p></div>
+        <ul>
+          <li>A district value summarises the wells measured in it, which may not represent every aquifer or every part of the district. A few wells can carry a district in early years.</li>
+          <li>Coverage varies: before about 1995 many districts have only a handful of wells; post-monsoon from 2023 is thin; some states lack manual readings in some years, so their values are estimated.</li>
+          <li>Pre-monsoon 2020 has very few readings (the COVID-19 lockdown).</li>
+          <li>Outlier removal is automatic and can occasionally drop a genuine but unusual reading, or keep a bad one.</li>
+          <li>The 2026 post-monsoon season was downloaded while still in progress.</li>
+        </ul>
+      </section>
+
+      <section id="reproduce" aria-labelledby="h-reproduce">
+        <h2 id="h-reproduce">Reproduce it</h2>
+        <p>All code is open in the <a href="https://github.com/anchitm06/india-water-level-map" rel="noopener">GitHub repository</a>. From a machine in India, with Python 3:</p>
+<pre><code>pip install -r pipeline/requirements.txt
+python pipeline/fetch.py        # download readings from India-WRIS (many hours, resumable)
+python pipeline/fetch_names.py  # station names
+python pipeline/place_names.py  # GeoNames places
+python pipeline/aggregate.py    # clean and build public/data/</code></pre>
+        <p>Each district's series can also be downloaded as CSV from its panel on the map.</p>
+        <a class="cta" href="./">Open the map</a>
+      </section>
+    </div>
+  </main>
+  <footer class="site-foot"><div class="container"><span>Data: India-WRIS / CGWB and state groundwater agencies. Place names: GeoNames (CC BY 4.0).</span><span>Unofficial visualisation.</span></div></footer>
+  <script type="module" src="./src/page.ts"></script>
+</body>
+</html>

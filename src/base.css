@@ -25,3 +25,10 @@ button, input, select, textarea { font: inherit; }
 @media (prefers-reduced-motion: reduce) { *:not(.keep-motion), *:not(.keep-motion)::before, *:not(.keep-motion)::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
 /* photographs: natural sat=-10 con=8 exp=-8 */
 [data-slot] > img { filter: saturate(0.9) contrast(1.08) brightness(0.92); }
+/* Links between the site's pages (filled in by the shared-chrome plugin in vite.config.ts) */
+.site-nav { display: flex; flex-wrap: wrap; gap: var(--space-2xs) var(--space-md); font-size: var(--text-sm); font-weight: 500; }
+.site-nav a { color: var(--color-ink-2); text-decoration: none; padding: var(--space-2xs) 0; border-bottom: 2px solid transparent; }
+.site-nav a:hover { color: var(--color-accent); }
+.site-nav a[aria-current="page"] { color: var(--color-ink); border-bottom-color: var(--color-accent); }
+.note a, .prose a { color: var(--color-accent); }
+.note a:hover, .prose a:hover { color: var(--color-accent-2); }
